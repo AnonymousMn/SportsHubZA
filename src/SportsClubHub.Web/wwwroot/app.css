@@ -84,6 +84,29 @@ a { text-underline-offset: 3px; }
 /* ---------- Directory cards ---------- */
 .item-card { background: #fff; border: 1px solid var(--line); border-top: 4px solid var(--turf); border-radius: .25rem; padding: 1.35rem; height: 100%; display: flex; flex-direction: column; gap: .65rem; transition: transform .2s ease, box-shadow .2s ease; }
 .item-card:hover { box-shadow: 0 12px 30px rgba(18,60,45,.09); transform: translateY(-3px); }
+.sport-card { border-top: 0; gap: 0; overflow: hidden; padding: 0; position: relative; }
+.sport-card-art { background: var(--turf); height: 145px; overflow: hidden; position: relative; }
+.sport-card-art::before, .sport-card-art::after { border: 1px solid rgba(255,255,255,.25); border-radius: 50%; content: ""; position: absolute; }
+.sport-card-art::before { height: 210px; left: -28px; top: -70px; width: 210px; }
+.sport-card-art::after { height: 150px; right: -58px; top: 32px; width: 150px; }
+.sport-card-body { display: flex; flex: 1; flex-direction: column; gap: .65rem; padding: 1.2rem 1.35rem 1.35rem; }
+.sport-card-body h2 { font-size: 1.35rem; margin: .45rem 0 0; }
+.sport-card-body h2 a { text-decoration: none; }
+.sport-card-arrow { color: var(--turf); font-size: 1.45rem; line-height: 1; transition: transform .2s ease; }
+.sport-card:hover .sport-card-arrow { transform: translate(3px, -3px); }
+.sport-card-number { bottom: .8rem; color: rgba(255,255,255,.6); font-size: .7rem; font-weight: 800; letter-spacing: .15em; position: absolute; right: 1rem; }
+.sport-orbit { animation: sport-orbit 8s linear infinite; border: 1px solid rgba(255,255,255,.52); border-radius: 50%; height: 120px; left: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%) rotate(22deg); width: 245px; }
+.sport-orbit-secondary { animation-direction: reverse; animation-duration: 11s; height: 190px; transform: translate(-50%, -50%) rotate(-38deg); width: 120px; }
+.sport-ball { animation: sport-ball-float 3.8s ease-in-out infinite; background: var(--gold); border: 3px solid rgba(23,37,31,.25); border-radius: 50%; box-shadow: 0 10px 18px rgba(0,0,0,.13); height: 38px; left: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%); width: 38px; }
+.sport-ball::after { border: 2px solid rgba(23,37,31,.5); border-radius: 50%; content: ""; height: 22px; left: 5px; position: absolute; top: 5px; transform: rotate(35deg); width: 22px; }
+.sport-card-courtsport .sport-card-art { background: #227b71; }
+.sport-card-aquatic .sport-card-art { background: #20658a; }
+.sport-card-athletics .sport-card-art { background: #aa5931; }
+.sport-card-combat .sport-card-art { background: #70405b; }
+.sport-card-indoor .sport-card-art { background: #5c5f8b; }
+.sport-card-recreational .sport-card-art { background: #47744d; }
+@keyframes sport-orbit { from { transform: translate(-50%, -50%) rotate(22deg); } to { transform: translate(-50%, -50%) rotate(382deg); } }
+@keyframes sport-ball-float { 0%, 100% { margin-top: 4px; } 50% { margin-top: -8px; } }
 .item-card h2, .item-card h3 { font-size: 1.15rem; margin: 0; }
 .item-card h2 a, .item-card h3 a { color: var(--ink); text-decoration: none; }
 .item-card h2 a:hover, .item-card h3 a:hover { text-decoration: underline; }
