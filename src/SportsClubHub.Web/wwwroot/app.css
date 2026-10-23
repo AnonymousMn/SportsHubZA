@@ -103,6 +103,37 @@ a { text-underline-offset: 3px; }
 .sport-orbit-secondary { animation-direction: reverse; animation-duration: 11s; height: 190px; transform: translate(-50%, -50%) rotate(-38deg); width: 120px; }
 .sport-ball { animation: sport-ball-float 3.8s ease-in-out infinite; background: var(--gold); border: 3px solid rgba(23,37,31,.25); border-radius: 50%; box-shadow: 0 10px 18px rgba(0,0,0,.13); height: 38px; left: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%); width: 38px; }
 .sport-ball::after { border: 2px solid rgba(23,37,31,.5); border-radius: 50%; content: ""; height: 22px; left: 5px; position: absolute; top: 5px; transform: rotate(35deg); width: 22px; }
+.sport-prop { display: none; position: absolute; z-index: 4; }
+.sport-key-football .sport-ball, .sport-key-rugby .sport-ball, .sport-key-netball .sport-ball, .sport-key-basketball .sport-ball, .sport-key-volleyball .sport-ball, .sport-key-waterpolo .sport-ball { display: block; }
+.sport-key-football .sport-ball { animation: ball-kick 2.2s ease-in-out infinite; border-radius: 50%; }
+.sport-key-rugby .sport-ball { animation: ball-kick 2.5s ease-in-out infinite; border-radius: 50% 50% 45% 45%; height: 28px; transform: translate(-50%, -50%) rotate(35deg); width: 46px; }
+.sport-key-netball .sport-ball, .sport-key-basketball .sport-ball { animation: ball-dribble 1.7s ease-in-out infinite; }
+.sport-key-volleyball .sport-ball { animation: ball-volley 2.1s ease-in-out infinite; }
+.sport-key-waterpolo .sport-ball { animation: ball-water 2s ease-in-out infinite; }
+.sport-key-cricket .sport-prop, .sport-key-hockey .sport-prop, .sport-key-tennis .sport-prop, .sport-key-badminton .sport-prop, .sport-key-tabletennis .sport-prop, .sport-key-squash .sport-prop { display: block; height: 55px; left: 51px; top: 51px; width: 8px; }
+.sport-key-cricket .sport-prop { background: #8d5c38; transform: rotate(35deg); }
+.sport-key-hockey .sport-prop { background: #f5f7ee; border-radius: 0 0 12px 12px; transform: rotate(25deg); }
+.sport-key-tennis .sport-prop, .sport-key-badminton .sport-prop, .sport-key-tabletennis .sport-prop, .sport-key-squash .sport-prop { border: 3px solid var(--gold); border-radius: 50%; height: 27px; transform: rotate(-35deg); width: 22px; }
+.sport-key-tennis .stick-athlete, .sport-key-badminton .stick-athlete, .sport-key-tabletennis .stick-athlete, .sport-key-squash .stick-athlete { animation-name: athlete-racket; }
+.sport-key-cricket .stick-athlete, .sport-key-hockey .stick-athlete { animation-name: athlete-swing; }
+.sport-key-swimming .stick-athlete, .sport-key-surfing .stick-athlete { animation-name: athlete-swim; }
+.sport-key-boxing .stick-athlete, .sport-key-taekwondo .stick-athlete { animation-name: athlete-punch; }
+.sport-key-judo .stick-athlete { animation-name: athlete-judo; }
+.sport-key-cycling .stick-athlete { animation-name: athlete-cycle; }
+.sport-key-archery .stick-athlete { animation-name: athlete-archery; }
+.sport-key-chess .stick-athlete { animation-name: athlete-think; }
+.sport-key-rugby .stick-athlete { animation-name: athlete-tackle; }
+.sport-key-football .stick-athlete, .sport-key-netball .stick-athlete, .sport-key-basketball .stick-athlete, .sport-key-volleyball .stick-athlete { animation-name: athlete-ball; }
+@keyframes athlete-ball { 0%, 100% { transform: translateX(-50%) rotate(-5deg); } 50% { transform: translateX(-50%) translateY(-7px) rotate(8deg); } }
+@keyframes athlete-racket { 0%, 100% { transform: translateX(-50%) rotate(-10deg); } 50% { transform: translateX(-50%) rotate(18deg); } }
+@keyframes athlete-judo { 0%, 100% { transform: translateX(-50%) rotate(-8deg); } 50% { transform: translateX(-50%) translateY(4px) rotate(12deg); } }
+@keyframes athlete-cycle { 0%, 100% { transform: translateX(-50%) rotate(8deg); } 50% { transform: translateX(-50%) translateY(-4px) rotate(-8deg); } }
+@keyframes athlete-archery { 0%, 100% { transform: translateX(-50%) rotate(-8deg); } 50% { transform: translateX(-50%) rotate(8deg); } }
+@keyframes athlete-tackle { 0%, 100% { transform: translateX(-50%) rotate(-12deg); } 50% { transform: translateX(-50%) translateX(7px) rotate(8deg); } }
+@keyframes ball-kick { 0%, 100% { left: 43%; top: 56%; } 50% { left: 74%; top: 33%; transform: translate(-50%, -50%) rotate(220deg); } }
+@keyframes ball-dribble { 0%, 100% { top: 46%; } 50% { top: 68%; } }
+@keyframes ball-volley { 0%, 100% { left: 42%; top: 61%; } 50% { left: 73%; top: 29%; } }
+@keyframes ball-water { 0%, 100% { left: 42%; top: 62%; } 50% { left: 70%; top: 43%; } }
 .stick-athlete { animation: athlete-bounce 2.8s ease-in-out infinite; bottom: 14px; height: 98px; left: 50%; position: absolute; transform: translateX(-50%); width: 70px; z-index: 3; }
 .stick-head { background: var(--gold); border: 3px solid var(--ink); border-radius: 50%; height: 22px; left: 24px; position: absolute; top: 0; width: 22px; }
 .stick-body, .stick-arm, .stick-leg { background: var(--ink); border-radius: 3px; display: block; position: absolute; transform-origin: top center; }

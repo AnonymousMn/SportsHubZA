@@ -38,7 +38,7 @@
             @foreach (var item in items)
             {
                 <div class="col-md-6 col-lg-4">
-                    <article class="item-card sport-card sport-card-@item.Sport.Category.ToString().ToLowerInvariant()">
+                    <article class="item-card sport-card sport-card-@item.Sport.Category.ToString().ToLowerInvariant() sport-key-@SportKey(item.Sport.Name)">
                         <div class="sport-card-art" aria-hidden="true">
                             @if (!string.IsNullOrWhiteSpace(item.Sport.ImageUrl))
                             {
@@ -47,6 +47,7 @@
                             <span class="sport-orbit"></span>
                             <span class="sport-orbit sport-orbit-secondary"></span>
                             <span class="sport-ball"></span>
+                            <span class="sport-prop sport-prop-@SportKey(item.Sport.Name)" aria-hidden="true"></span>
                             <span class="stick-athlete" aria-hidden="true">
                                 <span class="stick-head"></span>
                                 <span class="stick-body"></span>
@@ -85,6 +86,35 @@
     private string categoryText = string.Empty;
     private List<SportListItem>? items;
     private int requestNumber;
+
+    private static string SportKey(string name) =>
+        name.ToLowerInvariant() switch
+        {
+            "football" => "football",
+            "rugby union" => "rugby",
+            "cricket" => "cricket",
+            "hockey" => "hockey",
+            "netball" => "netball",
+            "basketball" => "basketball",
+            "volleyball" => "volleyball",
+            "tennis" => "tennis",
+            "badminton" => "badminton",
+            "swimming" => "swimming",
+            "water polo" => "waterpolo",
+            "surfing" => "surfing",
+            "athletics (track and field)" => "athletics",
+            "road running" => "running",
+            "boxing" => "boxing",
+            "judo" => "judo",
+            "taekwondo" => "taekwondo",
+            "chess" => "chess",
+            "table tennis" => "tabletennis",
+            "squash" => "squash",
+            "cycling" => "cycling",
+            "archery" => "archery",
+            "hiking and trail running" => "hiking",
+            _ => "default"
+        };
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
