@@ -62,6 +62,13 @@ public class SportService
         sport.Name = InputNormaliser.Text(sport.Name);
         sport.Description = InputNormaliser.NullIfBlank(sport.Description);
         sport.TypicalFacilityType = InputNormaliser.NullIfBlank(sport.TypicalFacilityType);
+        sport.ImageUrl = InputNormaliser.NullIfBlank(sport.ImageUrl);
+        if (sport.ImageUrl is not null &&
+            (!Uri.TryCreate(sport.ImageUrl, UriKind.Absolute, out var imageUri) ||
+             (imageUri.Scheme != Uri.UriSchemeHttp && imageUri.Scheme != Uri.UriSchemeHttps)))
+        {
+            return OperationResult.Fail("The image must use a complete http:// or https:// URL.");
+        }
 
         await using var db = await _factory.CreateDbContextAsync();
 

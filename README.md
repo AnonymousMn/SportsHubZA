@@ -122,6 +122,7 @@ Design choices that are worth knowing:
 ## Features
 
 - Sports directory: search by name, filter by category, detail page (with clubs, venues), admin add/edit/deactivate
+- Sport imagery: administrators can add durable HTTPS image URLs (for example from Cloudinary, Supabase Storage or S3) to show sports in action
 - Club directory: search by name/location, filter by sport, detail page with teams and the club's own contact details, public registration form (starts as *Pending*), admin verify/reject/edit/deactivate and team management
 - Participant interest registration with validation, mandatory adult and privacy-notice confirmations, duplicate prevention, and matching clubs shown afterwards
 - Venue directory: filter by location and sport; admin add/edit/deactivate with supported sports

@@ -22,6 +22,10 @@ public class Sport
     [StringLength(100)]
     public string? TypicalFacilityType { get; set; }
 
+    /// <summary>Optional externally hosted image showing this sport in action.</summary>
+    [StringLength(500), Url]
+    public string? ImageUrl { get; set; }
+
     /// <summary>Sports are deactivated instead of deleted so existing interest records stay meaningful.</summary>
     public bool IsActive { get; set; } = true;
 

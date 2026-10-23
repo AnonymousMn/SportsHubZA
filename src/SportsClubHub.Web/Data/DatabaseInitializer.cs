@@ -32,6 +32,7 @@ public class DatabaseInitializer
         await using var db = await _factory.CreateDbContextAsync();
 
         await db.Database.EnsureCreatedAsync();
+        await EnsureSportImageColumnAsync(db);
 
         if (!await db.Sports.AnyAsync())
         {
@@ -48,5 +49,39 @@ public class DatabaseInitializer
         }
 
         await _adminAccounts.EnsureInitialAdminAsync();
+    }
+
+    private static async Task EnsureSportImageColumnAsync(AppDbContext db)
+    {
+        await db.Database.OpenConnectionAsync();
+        try
+        {
+            await using var command = db.Database.GetDbConnection().CreateCommand();
+            command.CommandText = "PRAGMA table_info('Sports');";
+
+            var hasImageUrl = false;
+            await using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    if (string.Equals(reader.GetString(1), "ImageUrl", StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasImageUrl = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hasImageUrl)
+            {
+                await using var alter = db.Database.GetDbConnection().CreateCommand();
+                alter.CommandText = "ALTER TABLE Sports ADD COLUMN ImageUrl TEXT NULL;";
+                await alter.ExecuteNonQueryAsync();
+            }
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
+        }
     }
 }

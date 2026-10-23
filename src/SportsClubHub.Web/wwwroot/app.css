@@ -86,6 +86,8 @@ a { text-underline-offset: 3px; }
 .item-card:hover { box-shadow: 0 12px 30px rgba(18,60,45,.09); transform: translateY(-3px); }
 .sport-card { border-top: 0; gap: 0; overflow: hidden; padding: 0; position: relative; }
 .sport-card-art { background: var(--turf); height: 145px; overflow: hidden; position: relative; }
+.sport-card-image { height: 100%; inset: 0; object-fit: cover; opacity: .8; position: absolute; width: 100%; z-index: 1; }
+.sport-card-art::before, .sport-card-art::after { z-index: 2; }
 .sport-card-art::before, .sport-card-art::after { border: 1px solid rgba(255,255,255,.25); border-radius: 50%; content: ""; position: absolute; }
 .sport-card-art::before { height: 210px; left: -28px; top: -70px; width: 210px; }
 .sport-card-art::after { height: 150px; right: -58px; top: 32px; width: 150px; }
@@ -95,6 +97,8 @@ a { text-underline-offset: 3px; }
 .sport-card-arrow { color: var(--turf); font-size: 1.45rem; line-height: 1; transition: transform .2s ease; }
 .sport-card:hover .sport-card-arrow { transform: translate(3px, -3px); }
 .sport-card-number { bottom: .8rem; color: rgba(255,255,255,.6); font-size: .7rem; font-weight: 800; letter-spacing: .15em; position: absolute; right: 1rem; }
+.image-preview { background: var(--cream); border: 1px solid var(--line); padding: .5rem; }
+.image-preview img { display: block; height: 130px; object-fit: cover; width: 100%; }
 .sport-orbit { animation: sport-orbit 8s linear infinite; border: 1px solid rgba(255,255,255,.52); border-radius: 50%; height: 120px; left: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%) rotate(22deg); width: 245px; }
 .sport-orbit-secondary { animation-direction: reverse; animation-duration: 11s; height: 190px; transform: translate(-50%, -50%) rotate(-38deg); width: 120px; }
 .sport-ball { animation: sport-ball-float 3.8s ease-in-out infinite; background: var(--gold); border: 3px solid rgba(23,37,31,.25); border-radius: 50%; box-shadow: 0 10px 18px rgba(0,0,0,.13); height: 38px; left: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%); width: 38px; }

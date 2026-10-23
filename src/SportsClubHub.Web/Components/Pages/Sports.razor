@@ -40,6 +40,10 @@
                 <div class="col-md-6 col-lg-4">
                     <article class="item-card sport-card sport-card-@item.Sport.Category.ToString().ToLowerInvariant()">
                         <div class="sport-card-art" aria-hidden="true">
+                            @if (!string.IsNullOrWhiteSpace(item.Sport.ImageUrl))
+                            {
+                                <img class="sport-card-image" src="@item.Sport.ImageUrl" alt="" loading="lazy" />
+                            }
                             <span class="sport-orbit"></span>
                             <span class="sport-orbit sport-orbit-secondary"></span>
                             <span class="sport-ball"></span>
