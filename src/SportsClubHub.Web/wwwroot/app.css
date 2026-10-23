@@ -103,6 +103,46 @@ a { text-underline-offset: 3px; }
 .sport-orbit-secondary { animation-direction: reverse; animation-duration: 11s; height: 190px; transform: translate(-50%, -50%) rotate(-38deg); width: 120px; }
 .sport-ball { animation: sport-ball-float 3.8s ease-in-out infinite; background: var(--gold); border: 3px solid rgba(23,37,31,.25); border-radius: 50%; box-shadow: 0 10px 18px rgba(0,0,0,.13); height: 38px; left: 50%; position: absolute; top: 50%; transform: translate(-50%, -50%); width: 38px; }
 .sport-ball::after { border: 2px solid rgba(23,37,31,.5); border-radius: 50%; content: ""; height: 22px; left: 5px; position: absolute; top: 5px; transform: rotate(35deg); width: 22px; }
+.stick-athlete { animation: athlete-bounce 2.8s ease-in-out infinite; bottom: 14px; height: 98px; left: 50%; position: absolute; transform: translateX(-50%); width: 70px; z-index: 3; }
+.stick-head { background: var(--gold); border: 3px solid var(--ink); border-radius: 50%; height: 22px; left: 24px; position: absolute; top: 0; width: 22px; }
+.stick-body, .stick-arm, .stick-leg { background: var(--ink); border-radius: 3px; display: block; position: absolute; transform-origin: top center; }
+.stick-body { height: 39px; left: 34px; top: 21px; width: 4px; }
+.stick-arm { height: 32px; top: 25px; width: 4px; }
+.stick-arm-left { left: 33px; transform: rotate(48deg); }
+.stick-arm-right { left: 35px; transform: rotate(-55deg); }
+.stick-leg { height: 36px; top: 57px; width: 4px; }
+.stick-leg-left { left: 34px; transform: rotate(28deg); }
+.stick-leg-right { left: 35px; transform: rotate(-28deg); }
+.sport-card-fieldsport .stick-athlete, .sport-card-athletics .stick-athlete { animation-name: athlete-run; }
+.sport-card-courtsport .stick-athlete { animation-name: athlete-swing; }
+.sport-card-aquatic .stick-athlete { animation-name: athlete-swim; }
+.sport-card-combat .stick-athlete { animation-name: athlete-punch; }
+.sport-card-indoor .stick-athlete { animation-name: athlete-think; }
+.sport-card-recreational .stick-athlete { animation-name: athlete-bounce; }
+@keyframes athlete-bounce {
+    0%, 100% { bottom: 14px; transform: translateX(-50%) rotate(-3deg); }
+    50% { bottom: 21px; transform: translateX(-50%) rotate(3deg); }
+}
+@keyframes athlete-run {
+    0%, 100% { transform: translateX(-50%) skewX(-5deg); }
+    50% { transform: translateX(-50%) translateY(-5px) skewX(5deg); }
+}
+@keyframes athlete-swing {
+    0%, 100% { transform: translateX(-50%) rotate(-5deg); }
+    50% { transform: translateX(-50%) rotate(7deg); }
+}
+@keyframes athlete-swim {
+    0%, 100% { transform: translateX(-50%) translateY(3px) rotate(-7deg); }
+    50% { transform: translateX(-50%) translateY(-4px) rotate(7deg); }
+}
+@keyframes athlete-punch {
+    0%, 100% { transform: translateX(-50%) rotate(-4deg); }
+    50% { transform: translateX(-50%) translateX(5px) rotate(5deg); }
+}
+@keyframes athlete-think {
+    0%, 100% { transform: translateX(-50%) rotate(4deg); }
+    50% { transform: translateX(-50%) rotate(-4deg); }
+}
 .sport-card-courtsport .sport-card-art { background: #227b71; }
 .sport-card-aquatic .sport-card-art { background: #20658a; }
 .sport-card-athletics .sport-card-art { background: #aa5931; }
