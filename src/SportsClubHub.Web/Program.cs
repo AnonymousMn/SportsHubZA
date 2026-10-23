@@ -84,6 +84,7 @@ app.Use(async (context, next) =>
 });
 
 app.UseStaticFiles();
+app.UseStatusCodePagesWithReExecute("/not-found");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
