@@ -60,7 +60,7 @@
                 </table>
             </div>
             <div class="d-flex flex-wrap gap-2 mt-3">
-                <button type="button" class="btn btn-primary" disabled="@(!CanImport)" @onclick="ImportAsync">Import @ValidImportCount venues</button>
+                <button type="button" class="btn btn-primary" disabled="@(!CanImport)" @onclick="ImportAsync">Import @ValidImportCount valid venues</button>
                 <button type="button" class="btn btn-link" @onclick="ClearImport">Clear preview</button>
             </div>
         }
@@ -238,7 +238,7 @@
         await LoadAsync();
     }
 
-    private bool CanImport => importRows.Count > 0 && importRows.All(row => row.Error is null && row.Venue is not null);
+    private bool CanImport => ValidImportCount > 0;
     private int ValidImportCount => importRows.Count(row => row.Error is null && row.Venue is not null);
 
     private async Task PreviewFilesAsync(InputFileChangeEventArgs args)

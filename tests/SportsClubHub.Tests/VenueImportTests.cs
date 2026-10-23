@@ -27,6 +27,23 @@ public class VenueImportTests
     }
 
     [Fact]
+    public async Task Preview_AcceptsUtf8BomAndOptionalColumnsInDifferentOrder()
+    {
+        using var database = new TestDatabase();
+        await database.AddSportAsync("Football");
+        var service = new VenueService(database);
+
+        var rows = await service.PreviewImportAsync(new[]
+        {
+            ("venues.csv", "\uFEFFSports,Name,VenueType,Location\nFootball,Central Ground,Field,Gqeberha")
+        });
+
+        var row = Assert.Single(rows);
+        Assert.Null(row.Error);
+        Assert.Equal("Central Ground", row.Venue!.Name);
+    }
+
+    [Fact]
     public async Task Preview_ReportsMissingHeadersAndInvalidValues()
     {
         using var database = new TestDatabase();
@@ -83,5 +100,25 @@ public class VenueImportTests
         Assert.Equal("Central Ground", saved.Name);
         Assert.Contains(saved.VenueSports, venueSport => venueSport.SportId == football.SportId);
         Assert.Equal(2, saved.VenueSports.Count);
+    }
+
+    [Fact]
+    public async Task Import_SavesValidRowsWhenAnotherRowIsInvalid()
+    {
+        using var database = new TestDatabase();
+        await database.AddSportAsync("Football");
+        var service = new VenueService(database);
+        var rows = await service.PreviewImportAsync(new[]
+        {
+            ("venues.csv", "Name,Location,VenueType,Sports\n" +
+             "Good Ground,Gqeberha,Field,Football\n" +
+             "Bad Ground,Gqeberha,Unknown,Football")
+        });
+
+        var result = await service.ImportAsync(rows);
+
+        Assert.True(result.Succeeded);
+        Assert.Single(await service.SearchAsync(null, null));
+        Assert.NotNull(rows[1].Error);
     }
 }

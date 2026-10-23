@@ -163,7 +163,9 @@ public class VenueService
                 continue;
             }
 
-            var header = ParseDelimitedLine(lines[0]);
+            var header = ParseDelimitedLine(lines[0])
+                .Select(value => value.Trim().Trim('\uFEFF'))
+                .ToList();
             var missingHeaders = new[] { "Name", "Location", "VenueType", "Sports" }
                 .Where(required => !header.Any(actual => string.Equals(actual, required, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
@@ -174,6 +176,9 @@ public class VenueService
                 continue;
             }
 
+            var columnIndexes = header
+                .Select((name, index) => (Name: name, Index: index))
+                .ToDictionary(column => column.Name, column => column.Index, StringComparer.OrdinalIgnoreCase);
             var start = 1;
             for (var index = start; index < lines.Length; index++)
             {
@@ -182,12 +187,22 @@ public class VenueService
                     continue;
                 }
 
-                var fields = ParseDelimitedLine(lines[index]);
+                var parsedFields = ParseDelimitedLine(lines[index]);
+                var fields = new[]
+                {
+                    GetField(parsedFields, columnIndexes, "Name"),
+                    GetField(parsedFields, columnIndexes, "Location"),
+                    GetField(parsedFields, columnIndexes, "Address"),
+                    GetField(parsedFields, columnIndexes, "VenueType"),
+                    GetField(parsedFields, columnIndexes, "SurfaceType"),
+                    GetField(parsedFields, columnIndexes, "Capacity"),
+                    GetField(parsedFields, columnIndexes, "Sports")
+                };
                 var rowNumber = index + 1;
-                if (fields.Count < 7)
+                if (parsedFields.Count < header.Count)
                 {
                     rows.Add(new VenueImportRow(rowNumber, file.FileName, null, Array.Empty<string>(),
-                        "Expected 7 columns: Name, Location, Address, VenueType, SurfaceType, Capacity, Sports."));
+                        $"Expected {header.Count} columns but found {parsedFields.Count}."));
                     continue;
                 }
 
@@ -227,10 +242,10 @@ public class VenueService
 
     public async Task<OperationResult> ImportAsync(IReadOnlyCollection<VenueImportRow> rows)
     {
-        var invalid = rows.FirstOrDefault(row => row.Venue is null || row.Error is not null);
-        if (invalid is not null)
+        var validRows = rows.Where(row => row.Venue is not null && row.Error is null).ToList();
+        if (validRows.Count == 0)
         {
-            return OperationResult.Fail("Fix the invalid rows before importing.");
+            return OperationResult.Fail("There are no valid rows to import.");
         }
 
         await using var db = await _factory.CreateDbContextAsync();
@@ -242,7 +257,7 @@ public class VenueService
             .Select(v => $"{v.Name.Trim().ToLowerInvariant()}|{v.Location.Trim().ToLowerInvariant()}")
             .ToHashSet();
 
-        foreach (var row in rows)
+        foreach (var row in validRows)
         {
             var venue = row.Venue!;
             venue.Name = InputNormaliser.Text(venue.Name);
@@ -265,6 +280,16 @@ public class VenueService
 
         await db.SaveChangesAsync();
         return OperationResult.Success();
+    }
+
+    private static string GetField(
+        IReadOnlyList<string> fields,
+        IReadOnlyDictionary<string, int> columnIndexes,
+        string columnName)
+    {
+        return columnIndexes.TryGetValue(columnName, out var index) && index < fields.Count
+            ? fields[index].Trim()
+            : string.Empty;
     }
 
     private static string? ValidateImportRow(
