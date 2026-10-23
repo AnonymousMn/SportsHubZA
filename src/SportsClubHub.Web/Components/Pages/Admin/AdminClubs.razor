@@ -1,0 +1,110 @@
+@page "/admin/clubs"
+@attribute [Authorize(Roles = AppRoles.Administrator)]
+@rendermode InteractiveNoPrerender
+@inject ClubService ClubService
+
+<div class="container">
+    <PageHeader Title="Manage clubs" Subtitle="Verify new clubs, edit club details and manage teams. Only verified, active clubs appear in the public directory." />
+    <AdminNav />
+
+    @if (message is not null)
+    {
+        <div class="alert alert-success" role="status">@message</div>
+    }
+    @if (errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@errorMessage</div>
+    }
+
+    <div class="filter-bar">
+        <div>
+            <label class="form-label" for="admin-club-search">Search clubs</label>
+            <input id="admin-club-search" class="form-control" type="search" placeholder="Name or location"
+                   @bind="search" @bind:event="oninput" @bind:after="LoadAsync" />
+        </div>
+    </div>
+
+    @if (clubs is null)
+    {
+        <p class="muted" role="status">Loading...</p>
+    }
+    else if (clubs.Count == 0)
+    {
+        <div class="panel"><p class="mb-0">No clubs found.</p></div>
+    }
+    else
+    {
+        <div class="table-scroll">
+            <table class="data">
+                <thead>
+                    <tr><th scope="col">Club</th><th scope="col">Sports</th><th scope="col">Verification</th><th scope="col">Listing</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var club in clubs)
+                    {
+                        <tr>
+                            <td><strong>@club.Name</strong><br /><span class="muted">@club.Location</span></td>
+                            <td>@string.Join(", ", club.ClubSports.Select(cs => cs.Sport.Name).OrderBy(n => n))</td>
+                            <td>
+                                @if (club.VerificationStatus == VerificationStatus.Verified) { <span class="tag">Verified</span> }
+                                else if (club.VerificationStatus == VerificationStatus.Pending) { <span class="tag tag-warn">Pending</span> }
+                                else { <span class="tag tag-bad">Rejected</span> }
+                            </td>
+                            <td>@(club.IsActive ? "Active" : "Inactive")</td>
+                            <td class="text-nowrap">
+                                <a class="btn btn-sm btn-outline-primary" href="admin/clubs/@club.ClubId">Edit</a>
+                                @if (club.VerificationStatus != VerificationStatus.Verified)
+                                {
+                                    <button type="button" class="btn btn-sm btn-primary" @onclick="() => SetVerificationAsync(club, VerificationStatus.Verified)">Verify</button>
+                                }
+                                @if (club.VerificationStatus == VerificationStatus.Pending)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => SetVerificationAsync(club, VerificationStatus.Rejected)">Reject</button>
+                                }
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleActiveAsync(club)">
+                                    @(club.IsActive ? "Deactivate" : "Activate")
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private string search = string.Empty;
+    private List<Club>? clubs;
+    private string? message;
+    private string? errorMessage;
+    private int requestNumber;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var thisRequest = ++requestNumber;
+        var result = await ClubService.SearchAsync(search, null, publicOnly: false);
+        if (thisRequest == requestNumber)
+        {
+            clubs = result;
+        }
+    }
+
+    private async Task SetVerificationAsync(Club club, VerificationStatus status)
+    {
+        var result = await ClubService.SetVerificationAsync(club.ClubId, status);
+        message = result.Succeeded ? $"{club.Name} is now {status.ToDisplayText().ToLowerInvariant()}." : null;
+        errorMessage = result.Error;
+        await LoadAsync();
+    }
+
+    private async Task ToggleActiveAsync(Club club)
+    {
+        var result = await ClubService.SetActiveAsync(club.ClubId, !club.IsActive);
+        message = result.Succeeded ? $"{club.Name} {(club.IsActive ? "deactivated" : "activated")}." : null;
+        errorMessage = result.Error;
+        await LoadAsync();
+    }
+}

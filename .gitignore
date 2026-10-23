@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+*.user
+# Local database files may contain personal data - never commit them
+App_Data/
+*.db
+*.db-shm
+*.db-wal
+# Local environment files can contain passwords and connection strings.
+.env
+.env.*
+!.env.example

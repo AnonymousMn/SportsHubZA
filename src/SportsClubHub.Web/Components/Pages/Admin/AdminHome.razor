@@ -1,0 +1,81 @@
+@page "/admin"
+@attribute [Authorize(Roles = AppRoles.Administrator)]
+@rendermode InteractiveNoPrerender
+@inject InsightsService InsightsService
+
+<div class="container">
+    <PageHeader Title="Administration" Subtitle="Manage the directory and review aggregate interest statistics." />
+    <AdminNav />
+
+    @if (insights is null)
+    {
+        <p class="muted" role="status">Loading...</p>
+    }
+    else
+    {
+        @if (insights.PendingClubCount > 0)
+        {
+            <p class="notice">
+                @insights.PendingClubCount @(insights.PendingClubCount == 1 ? "club is" : "clubs are") waiting for verification.
+                <a href="admin/clubs">Review clubs</a>
+            </p>
+        }
+
+        <div class="figures mb-4">
+            <div><div class="figure-number">@insights.VerifiedClubCount</div><div class="figure-label">verified clubs</div></div>
+            <div><div class="figure-number">@insights.ActiveSportCount</div><div class="figure-label">active sports</div></div>
+            <div><div class="figure-number">@insights.ActiveVenueCount</div><div class="figure-label">active venues</div></div>
+            <div><div class="figure-number">@insights.ParticipantCount</div><div class="figure-label">people registered interest</div></div>
+            <div><div class="figure-number">@insights.InterestRegistrationCount</div><div class="figure-label">interest registrations</div></div>
+        </div>
+
+        <h2>Interest by sport</h2>
+        <p class="muted">
+            Interest registrations are not confirmed participants or members. Individual participant records are
+            deliberately not shown in this application.
+        </p>
+
+        @if (insights.AllSports.Count == 0)
+        {
+            <p>No active sports. <a href="admin/sports">Add a sport</a>.</p>
+        }
+        else
+        {
+            <div class="table-scroll">
+                <table class="data">
+                    <thead><tr><th scope="col">Sport</th><th scope="col">Interest registrations</th><th scope="col">Verified clubs</th></tr></thead>
+                    <tbody>
+                        @foreach (var sport in insights.AllSports)
+                        {
+                            <tr><td>@sport.SportName</td><td>@sport.InterestCount</td><td>@sport.ClubCount</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+
+        <h2 class="mt-4">People who registered interest, by location</h2>
+        @if (insights.ParticipantsByLocation.Count == 0)
+        {
+            <p class="muted">No location has at least @CommunityInsights.MinimumGroupSize people yet. Smaller groups are hidden to protect privacy.</p>
+        }
+        else
+        {
+            <ul class="list-unstyled col-md-6">
+                @foreach (var location in insights.ParticipantsByLocation)
+                {
+                    <li class="d-flex justify-content-between border-bottom py-1"><span>@location.Location</span><strong>@location.Count</strong></li>
+                }
+            </ul>
+        }
+    }
+</div>
+
+@code {
+    private CommunityInsights? insights;
+
+    protected override async Task OnInitializedAsync()
+    {
+        insights = await InsightsService.GetAsync();
+    }
+}

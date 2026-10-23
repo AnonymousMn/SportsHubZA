@@ -1,0 +1,284 @@
+@page "/admin/clubs/{Id:int}"
+@attribute [Authorize(Roles = AppRoles.Administrator)]
+@rendermode InteractiveNoPrerender
+@inject ClubService ClubService
+@inject SportService SportService
+@inject TeamService TeamService
+
+<div class="container">
+    <PageHeader Title="@(club is null ? "Club" : $"Edit {club.Name}")" Subtitle="Change the club's details, the sports it offers and its teams." />
+    <AdminNav />
+
+    @if (loading)
+    {
+        <p class="muted" role="status">Loading...</p>
+    }
+    else if (club is null)
+    {
+        <div class="panel"><p class="mb-2">That club does not exist.</p><a href="admin/clubs">Back to clubs</a></div>
+    }
+    else
+    {
+        @if (message is not null)
+        {
+            <div class="alert alert-success" role="status">@message</div>
+        }
+
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <div class="panel">
+                    <h2>Club details</h2>
+                    <EditForm Model="editing" OnValidSubmit="SaveClubAsync">
+                        <DataAnnotationsValidator />
+                        @if (clubError is not null)
+                        {
+                            <div class="alert alert-danger" role="alert">@clubError</div>
+                        }
+                        <div class="mb-3">
+                            <label class="form-label" for="edit-club-name">Club name</label>
+                            <InputText id="edit-club-name" class="form-control" @bind-Value="editing.Name" />
+                            <ValidationMessage For="() => editing.Name" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="edit-club-location">Town or area</label>
+                            <InputText id="edit-club-location" class="form-control" @bind-Value="editing.Location" />
+                            <ValidationMessage For="() => editing.Location" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="edit-club-description">About the club</label>
+                            <InputTextArea id="edit-club-description" class="form-control" rows="3" @bind-Value="editing.Description" />
+                            <ValidationMessage For="() => editing.Description" />
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="edit-club-email">Club e-mail</label>
+                                <InputText id="edit-club-email" class="form-control" type="email" @bind-Value="editing.ContactEmail" />
+                                <ValidationMessage For="() => editing.ContactEmail" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="edit-club-phone">Club phone</label>
+                                <InputText id="edit-club-phone" class="form-control" type="tel" @bind-Value="editing.ContactPhone" />
+                                <ValidationMessage For="() => editing.ContactPhone" />
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="edit-club-website">Website</label>
+                            <InputText id="edit-club-website" class="form-control" placeholder="https://" @bind-Value="editing.Website" />
+                            <ValidationMessage For="() => editing.Website" />
+                        </div>
+
+                        <p class="form-label mb-1">Sports offered</p>
+                        <SportCheckboxes Sports="sports" Selected="selectedSportIds" IdPrefix="edit-club-sport" />
+
+                        <button type="submit" class="btn btn-primary">Save club</button>
+                        <a class="btn btn-link" href="admin/clubs">Back to clubs</a>
+                    </EditForm>
+                </div>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="panel">
+                    <h2>Teams</h2>
+                    @if (teams.Count == 0)
+                    {
+                        <p class="muted">This club has no teams yet.</p>
+                    }
+                    else
+                    {
+                        <div class="table-scroll mb-3">
+                            <table class="data">
+                                <thead><tr><th scope="col">Team</th><th scope="col">Sport</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+                                <tbody>
+                                    @foreach (var team in teams)
+                                    {
+                                        <tr class="@(team.IsActive ? "" : "text-muted")">
+                                            <td>@team.Name<br /><span class="muted">@team.AgeGroup, @team.CompetitionLevel.ToDisplayText()@(team.IsActive ? "" : " (inactive)")</span></td>
+                                            <td>@team.Sport.Name</td>
+                                            <td class="text-nowrap">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => EditTeam(team)">Edit</button>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleTeamAsync(team)">@(team.IsActive ? "Deactivate" : "Activate")</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+
+                    <h3 class="h5">@(teamEditing.TeamId == 0 ? "Add a team" : "Edit team")</h3>
+                    @if (club.ClubSports.Count == 0)
+                    {
+                        <p class="muted">Add a sport to the club before adding teams.</p>
+                    }
+                    else
+                    {
+                        <EditForm Model="teamEditing" OnValidSubmit="SaveTeamAsync">
+                            <DataAnnotationsValidator />
+                            @if (teamError is not null)
+                            {
+                                <div class="alert alert-danger" role="alert">@teamError</div>
+                            }
+                            <div class="mb-3">
+                                <label class="form-label" for="team-name">Team name</label>
+                                <InputText id="team-name" class="form-control" @bind-Value="teamEditing.Name" />
+                                <ValidationMessage For="() => teamEditing.Name" />
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label" for="team-sport">Sport</label>
+                                <InputSelect id="team-sport" class="form-select" @bind-Value="teamEditing.SportId">
+                                    @foreach (var clubSport in club.ClubSports.OrderBy(cs => cs.Sport.Name))
+                                    {
+                                        <option value="@clubSport.SportId">@clubSport.Sport.Name</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm-6 mb-3">
+                                    <label class="form-label" for="team-age">Age group</label>
+                                    <InputText id="team-age" class="form-control" @bind-Value="teamEditing.AgeGroup" />
+                                    <ValidationMessage For="() => teamEditing.AgeGroup" />
+                                </div>
+                                <div class="col-sm-6 mb-3">
+                                    <label class="form-label" for="team-level">Level</label>
+                                    <InputSelect id="team-level" class="form-select" @bind-Value="teamEditing.CompetitionLevel">
+                                        @foreach (var level in Enum.GetValues<CompetitionLevel>())
+                                        {
+                                            <option value="@level">@level.ToDisplayText()</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save team</button>
+                            @if (teamEditing.TeamId != 0)
+                            {
+                                <button type="button" class="btn btn-link" @onclick="CancelTeamEdit">Cancel</button>
+                            }
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private bool loading = true;
+    private Club? club;
+    private Club editing = new();
+    private List<Sport> sports = new();
+    private readonly HashSet<int> selectedSportIds = new();
+    private List<Team> teams = new();
+    private Team teamEditing = new();
+    private string? message;
+    private string? clubError;
+    private string? teamError;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        sports = await SportService.GetActiveAsync();
+        await LoadClubAsync();
+        loading = false;
+    }
+
+    private async Task LoadClubAsync()
+    {
+        club = await ClubService.GetAsync(Id, publicOnly: false);
+        if (club is null)
+        {
+            return;
+        }
+
+        // Work on a copy so unsaved edits never change what is shown elsewhere on the page.
+        editing = new Club
+        {
+            ClubId = club.ClubId,
+            Name = club.Name,
+            Description = club.Description,
+            Location = club.Location,
+            ContactEmail = club.ContactEmail,
+            ContactPhone = club.ContactPhone,
+            Website = club.Website
+        };
+
+        selectedSportIds.Clear();
+        foreach (var clubSport in club.ClubSports)
+        {
+            selectedSportIds.Add(clubSport.SportId);
+        }
+
+        teams = await TeamService.ListForClubAsync(Id);
+        teamEditing = NewTeam();
+    }
+
+    private Team NewTeam() => new()
+    {
+        ClubId = Id,
+        SportId = club?.ClubSports.OrderBy(cs => cs.Sport.Name).Select(cs => cs.SportId).FirstOrDefault() ?? 0
+    };
+
+    private async Task SaveClubAsync()
+    {
+        var result = await ClubService.SaveAsync(editing, selectedSportIds.ToList());
+        if (result.Succeeded)
+        {
+            message = "Club saved.";
+            clubError = null;
+            await LoadClubAsync();
+        }
+        else
+        {
+            clubError = result.Error;
+        }
+    }
+
+    private void EditTeam(Team team)
+    {
+        teamEditing = new Team
+        {
+            TeamId = team.TeamId,
+            ClubId = team.ClubId,
+            SportId = team.SportId,
+            Name = team.Name,
+            AgeGroup = team.AgeGroup,
+            CompetitionLevel = team.CompetitionLevel,
+            IsActive = team.IsActive
+        };
+        teamError = null;
+        message = null;
+    }
+
+    private void CancelTeamEdit()
+    {
+        teamEditing = NewTeam();
+        teamError = null;
+    }
+
+    private async Task SaveTeamAsync()
+    {
+        var wasNew = teamEditing.TeamId == 0;
+        var result = await TeamService.SaveAsync(teamEditing);
+        if (result.Succeeded)
+        {
+            message = wasNew ? "Team added." : "Team updated.";
+            teamError = null;
+            teams = await TeamService.ListForClubAsync(Id);
+            teamEditing = NewTeam();
+        }
+        else
+        {
+            teamError = result.Error;
+        }
+    }
+
+    private async Task ToggleTeamAsync(Team team)
+    {
+        var result = await TeamService.SetActiveAsync(team.TeamId, !team.IsActive);
+        message = result.Succeeded ? (team.IsActive ? "Team deactivated." : "Team activated.") : null;
+        teamError = result.Error;
+        teams = await TeamService.ListForClubAsync(Id);
+    }
+}

@@ -1,0 +1,39 @@
+@page "/account/logout"
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject NavigationManager Navigation
+
+<PageTitle>Sign out | Sports Club Hub</PageTitle>
+
+<div class="container">
+    <div class="page-header">
+        <h1>Sign out</h1>
+    </div>
+
+    <div class="panel col-md-8 col-lg-5">
+        <AuthorizeView>
+            <Authorized>
+                <p>You are signed in as @context.User.Identity?.Name.</p>
+                <form method="post" @onsubmit="SignOutAsync" @formname="staff-sign-out">
+                    <AntiforgeryToken />
+                    <button type="submit" class="btn btn-primary">Sign out</button>
+                </form>
+            </Authorized>
+            <NotAuthorized>
+                <p>You are not signed in.</p>
+                <a href="/">Back to the home page</a>
+            </NotAuthorized>
+        </AuthorizeView>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    private async Task SignOutAsync()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+}

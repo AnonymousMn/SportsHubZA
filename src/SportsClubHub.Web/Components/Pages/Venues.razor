@@ -1,0 +1,104 @@
+@page "/venues"
+@rendermode InteractiveNoPrerender
+@inject VenueService VenueService
+@inject SportService SportService
+
+<div class="container">
+    <PageHeader Title="Venues" Subtitle="Fields, courts, halls and pools where sport is played, and which sports each one supports." />
+
+    <div class="filter-bar">
+        <div>
+            <label class="form-label" for="venue-location">Location</label>
+            <input id="venue-location" class="form-control" type="search" list="venue-location-options" placeholder="For example: Johannesburg"
+                   @bind="location" @bind:event="oninput" @bind:after="LoadAsync" />
+            <datalist id="venue-location-options">
+                @foreach (var known in knownLocations)
+                {
+                    <option value="@known"></option>
+                }
+            </datalist>
+        </div>
+        <div>
+            <label class="form-label" for="venue-sport">Sport</label>
+            <select id="venue-sport" class="form-select" @bind="sportText" @bind:after="LoadAsync">
+                <option value="">All sports</option>
+                @foreach (var sport in sports)
+                {
+                    <option value="@sport.SportId">@sport.Name</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    @if (venues is null)
+    {
+        <p class="muted" role="status">Loading venues...</p>
+    }
+    else if (venues.Count == 0)
+    {
+        <div class="panel"><p class="mb-0">No venues match your search. Try another location or sport.</p></div>
+    }
+    else
+    {
+        <p class="muted" role="status">@venues.Count @(venues.Count == 1 ? "venue" : "venues") found</p>
+        <div class="row g-3">
+            @foreach (var venue in venues)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <article class="item-card">
+                        <h2>@venue.Name</h2>
+                        <span class="meta">@venue.Location</span>
+                        @if (!string.IsNullOrWhiteSpace(venue.Address))
+                        {
+                            <span class="meta">@venue.Address</span>
+                        }
+                        <ul class="list-unstyled meta mb-0">
+                            <li>Type: @venue.VenueType.ToDisplayText()</li>
+                            @if (!string.IsNullOrWhiteSpace(venue.SurfaceType))
+                            {
+                                <li>Surface: @venue.SurfaceType</li>
+                            }
+                            @if (venue.Capacity is not null)
+                            {
+                                <li>Capacity: @venue.Capacity</li>
+                            }
+                        </ul>
+                        <div>
+                            @foreach (var venueSport in venue.VenueSports.OrderBy(vs => vs.Sport.Name))
+                            {
+                                <a class="tag" href="sports/@venueSport.SportId">@venueSport.Sport.Name</a>
+                            }
+                        </div>
+                    </article>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string location = string.Empty;
+    private string sportText = string.Empty;
+    private List<Sport> sports = new();
+    private List<string> knownLocations = new();
+    private List<Venue>? venues;
+    private int requestNumber;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sports = await SportService.GetActiveAsync();
+        knownLocations = await VenueService.GetKnownLocationsAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var thisRequest = ++requestNumber;
+        int? sportId = int.TryParse(sportText, out var parsed) ? parsed : null;
+        var result = await VenueService.SearchAsync(location, sportId);
+        if (thisRequest == requestNumber)
+        {
+            venues = result;
+        }
+    }
+}

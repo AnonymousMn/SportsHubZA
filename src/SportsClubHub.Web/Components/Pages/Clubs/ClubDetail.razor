@@ -1,0 +1,109 @@
+@page "/clubs/{Id:int}"
+@rendermode InteractiveNoPrerender
+@inject ClubService ClubService
+
+<div class="container">
+    @if (loading)
+    {
+        <p class="muted pt-4" role="status">Loading...</p>
+    }
+    else if (club is null)
+    {
+        <PageHeader Title="Club not found" Subtitle="That club is not listed in the directory." />
+        <a href="clubs">Back to all clubs</a>
+    }
+    else
+    {
+        <PageHeader Title="@club.Name" Subtitle="@club.Location" />
+
+        <div class="row g-4">
+            <div class="col-lg-7">
+                @if (!string.IsNullOrWhiteSpace(club.Description))
+                {
+                    <p>@club.Description</p>
+                }
+
+                <h2>Sports offered</h2>
+                <div class="mb-4">
+                    @foreach (var clubSport in club.ClubSports.OrderBy(cs => cs.Sport.Name))
+                    {
+                        <a class="tag" href="sports/@clubSport.SportId">@clubSport.Sport.Name</a>
+                    }
+                </div>
+
+                <h2>Teams</h2>
+                @{
+                    var activeTeams = club.Teams.Where(t => t.IsActive).OrderBy(t => t.Sport.Name).ThenBy(t => t.Name).ToList();
+                }
+                @if (activeTeams.Count == 0)
+                {
+                    <p class="muted">This club has not listed any teams yet.</p>
+                }
+                else
+                {
+                    <div class="table-scroll">
+                        <table class="data">
+                            <thead>
+                                <tr><th scope="col">Team</th><th scope="col">Sport</th><th scope="col">Age group</th><th scope="col">Level</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var team in activeTeams)
+                                {
+                                    <tr>
+                                        <td>@team.Name</td>
+                                        <td>@team.Sport.Name</td>
+                                        <td>@team.AgeGroup</td>
+                                        <td>@team.CompetitionLevel.ToDisplayText()</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+
+            <div class="col-lg-5">
+                <div class="panel">
+                    <h2>Contact the club</h2>
+                    <p class="muted">These are the club's own contact details.</p>
+                    <dl class="mb-0">
+                        <dt>E-mail</dt>
+                        <dd><a href="mailto:@club.ContactEmail">@club.ContactEmail</a></dd>
+                        @if (!string.IsNullOrWhiteSpace(club.ContactPhone))
+                        {
+                            <dt>Phone</dt>
+                            <dd>@club.ContactPhone</dd>
+                        }
+                        @if (HasWebsite)
+                        {
+                            <dt>Website</dt>
+                            <dd><a href="@club.Website" target="_blank" rel="noopener noreferrer">@club.Website</a></dd>
+                        }
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <p class="mt-4"><a href="clubs">Back to all clubs</a></p>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private bool loading = true;
+    private Club? club;
+
+    // Only show the website as a link if it is a normal web address.
+    private bool HasWebsite =>
+        club?.Website is { Length: > 0 } site &&
+        (site.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || site.StartsWith("https://", StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        club = await ClubService.GetAsync(Id);
+        loading = false;
+    }
+}

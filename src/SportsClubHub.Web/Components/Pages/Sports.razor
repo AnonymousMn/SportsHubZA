@@ -1,0 +1,77 @@
+@page "/sports"
+@rendermode InteractiveNoPrerender
+@inject SportService SportService
+
+<div class="container">
+    <PageHeader Title="Sports" Subtitle="Browse the sports available in your community, then find clubs and venues for them." />
+
+    <div class="filter-bar">
+        <div>
+            <label class="form-label" for="sport-search">Search by name</label>
+            <input id="sport-search" class="form-control" type="search" placeholder="For example: netball"
+                   @bind="search" @bind:event="oninput" @bind:after="LoadAsync" />
+        </div>
+        <div>
+            <label class="form-label" for="sport-category">Category</label>
+            <select id="sport-category" class="form-select" @bind="categoryText" @bind:after="LoadAsync">
+                <option value="">All categories</option>
+                @foreach (var category in Enum.GetValues<SportCategory>())
+                {
+                    <option value="@category">@category.ToDisplayText()</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    @if (items is null)
+    {
+        <p class="muted" role="status">Loading sports...</p>
+    }
+    else if (items.Count == 0)
+    {
+        <div class="panel"><p class="mb-0">No sports match your search. Try a different name, or choose "All categories".</p></div>
+    }
+    else
+    {
+        <p class="muted" role="status">@items.Count @(items.Count == 1 ? "sport" : "sports") found</p>
+        <div class="row g-3">
+            @foreach (var item in items)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <article class="item-card">
+                        <h2><a href="sports/@item.Sport.SportId">@item.Sport.Name</a></h2>
+                        <div><span class="tag">@item.Sport.Category.ToDisplayText()</span></div>
+                        @if (!string.IsNullOrWhiteSpace(item.Sport.Description))
+                        {
+                            <p class="mb-0">@item.Sport.Description</p>
+                        }
+                        <p class="meta mt-auto mb-0">
+                            @(item.ClubCount == 0 ? "No verified clubs yet" : item.ClubCount == 1 ? "1 verified club" : $"{item.ClubCount} verified clubs")
+                        </p>
+                    </article>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private string search = string.Empty;
+    private string categoryText = string.Empty;
+    private List<SportListItem>? items;
+    private int requestNumber;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        // If the person keeps typing, only the newest request is allowed to update the page.
+        var thisRequest = ++requestNumber;
+        SportCategory? category = Enum.TryParse<SportCategory>(categoryText, out var parsed) ? parsed : null;
+        var result = await SportService.SearchAsync(search, category);
+        if (thisRequest == requestNumber)
+        {
+            items = result;
+        }
+    }
+}

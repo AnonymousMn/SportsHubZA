@@ -1,0 +1,29 @@
+@inject IJSRuntime JS
+
+<div class="page-header">
+    <h1>@Title</h1>
+    @if (!string.IsNullOrWhiteSpace(Subtitle))
+    {
+        <p class="lead">@Subtitle</p>
+    }
+</div>
+
+@code {
+    private string? _titleShownInTab;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    // Interactive pages are not pre-rendered, so the browser tab title is set from here.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_titleShownInTab != Title)
+        {
+            _titleShownInTab = Title;
+            await JS.InvokeVoidAsync("sportsClubHub.setTitle", Title);
+        }
+    }
+}

@@ -1,0 +1,185 @@
+@page "/admin/venues"
+@attribute [Authorize(Roles = AppRoles.Administrator)]
+@rendermode InteractiveNoPrerender
+@inject VenueService VenueService
+@inject SportService SportService
+
+<div class="container">
+    <PageHeader Title="Manage venues" Subtitle="Add or edit venues and choose which sports each one supports." />
+    <AdminNav />
+
+    @if (message is not null)
+    {
+        <div class="alert alert-success" role="status">@message</div>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            @if (venues is null)
+            {
+                <p class="muted" role="status">Loading...</p>
+            }
+            else if (venues.Count == 0)
+            {
+                <div class="panel"><p class="mb-0">No venues yet. Add the first one using the form.</p></div>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data">
+                        <thead><tr><th scope="col">Venue</th><th scope="col">Sports</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+                        <tbody>
+                            @foreach (var venue in venues)
+                            {
+                                <tr class="@(venue.IsActive ? "" : "text-muted")">
+                                    <td>
+                                        <strong>@venue.Name</strong>@(venue.IsActive ? "" : " (inactive)")<br />
+                                        <span class="muted">@venue.Location, @venue.VenueType.ToDisplayText()</span>
+                                    </td>
+                                    <td>@string.Join(", ", venue.VenueSports.Select(vs => vs.Sport.Name).OrderBy(n => n))</td>
+                                    <td class="text-nowrap">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => Edit(venue)">Edit</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleActiveAsync(venue)">@(venue.IsActive ? "Deactivate" : "Activate")</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="col-lg-6">
+            <div class="panel">
+                <h2>@(editing.VenueId == 0 ? "Add a venue" : "Edit venue")</h2>
+                <EditForm Model="editing" OnValidSubmit="SaveAsync">
+                    <DataAnnotationsValidator />
+                    @if (errorMessage is not null)
+                    {
+                        <div class="alert alert-danger" role="alert">@errorMessage</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label" for="venue-name">Venue name</label>
+                        <InputText id="venue-name" class="form-control" @bind-Value="editing.Name" />
+                        <ValidationMessage For="() => editing.Name" />
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="venue-location-edit">Town or area</label>
+                            <InputText id="venue-location-edit" class="form-control" @bind-Value="editing.Location" />
+                            <ValidationMessage For="() => editing.Location" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="venue-type">Venue type</label>
+                            <InputSelect id="venue-type" class="form-select" @bind-Value="editing.VenueType">
+                                @foreach (var type in Enum.GetValues<VenueType>())
+                                {
+                                    <option value="@type">@type.ToDisplayText()</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="venue-address">Address</label>
+                        <InputText id="venue-address" class="form-control" @bind-Value="editing.Address" />
+                        <ValidationMessage For="() => editing.Address" />
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="venue-surface">Surface</label>
+                            <InputText id="venue-surface" class="form-control" @bind-Value="editing.SurfaceType" />
+                            <ValidationMessage For="() => editing.SurfaceType" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="venue-capacity">Capacity</label>
+                            <InputNumber id="venue-capacity" class="form-control" @bind-Value="editing.Capacity" />
+                            <ValidationMessage For="() => editing.Capacity" />
+                        </div>
+                    </div>
+
+                    <p class="form-label mb-1">Sports supported</p>
+                    <SportCheckboxes Sports="sports" Selected="selectedSportIds" IdPrefix="venue-sport" />
+
+                    <button type="submit" class="btn btn-primary">Save venue</button>
+                    @if (editing.VenueId != 0)
+                    {
+                        <button type="button" class="btn btn-link" @onclick="CancelEdit">Cancel</button>
+                    }
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Venue>? venues;
+    private List<Sport> sports = new();
+    private Venue editing = new();
+    private readonly HashSet<int> selectedSportIds = new();
+    private string? message;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sports = await SportService.GetActiveAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() => venues = await VenueService.SearchAsync(null, null, includeInactive: true);
+
+    private void Edit(Venue venue)
+    {
+        editing = new Venue
+        {
+            VenueId = venue.VenueId,
+            Name = venue.Name,
+            Location = venue.Location,
+            Address = venue.Address,
+            VenueType = venue.VenueType,
+            SurfaceType = venue.SurfaceType,
+            Capacity = venue.Capacity,
+            IsActive = venue.IsActive
+        };
+        selectedSportIds.Clear();
+        foreach (var venueSport in venue.VenueSports)
+        {
+            selectedSportIds.Add(venueSport.SportId);
+        }
+
+        message = null;
+        errorMessage = null;
+    }
+
+    private void CancelEdit()
+    {
+        editing = new Venue();
+        selectedSportIds.Clear();
+        errorMessage = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        var wasNew = editing.VenueId == 0;
+        var result = await VenueService.SaveAsync(editing, selectedSportIds.ToList());
+        if (result.Succeeded)
+        {
+            message = wasNew ? "Venue added." : "Venue updated.";
+            errorMessage = null;
+            editing = new Venue();
+            selectedSportIds.Clear();
+            await LoadAsync();
+        }
+        else
+        {
+            errorMessage = result.Error;
+        }
+    }
+
+    private async Task ToggleActiveAsync(Venue venue)
+    {
+        var result = await VenueService.SetActiveAsync(venue.VenueId, !venue.IsActive);
+        message = result.Succeeded ? (venue.IsActive ? "Venue deactivated." : "Venue activated.") : null;
+        errorMessage = result.Error;
+        await LoadAsync();
+    }
+}

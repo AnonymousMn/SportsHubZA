@@ -1,0 +1,108 @@
+@page "/sports/{Id:int}"
+@rendermode InteractiveNoPrerender
+@inject SportService SportService
+@inject ClubService ClubService
+@inject VenueService VenueService
+
+<div class="container">
+    @if (loading)
+    {
+        <p class="muted pt-4" role="status">Loading...</p>
+    }
+    else if (sport is null)
+    {
+        <PageHeader Title="Sport not found" Subtitle="That sport is not in the directory." />
+        <a href="sports">Back to all sports</a>
+    }
+    else
+    {
+        <PageHeader Title="@sport.Name" Subtitle="@sport.Description" />
+
+        <div class="mb-4">
+            <span class="tag">@sport.Category.ToDisplayText()</span>
+            @if (!string.IsNullOrWhiteSpace(sport.TypicalFacilityType))
+            {
+                <span class="tag">Usually played at: @sport.TypicalFacilityType</span>
+            }
+            @if (interestCount > 0)
+            {
+                <span class="tag">@interestCount interest @(interestCount == 1 ? "registration" : "registrations")</span>
+            }
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <h2>Clubs offering @sport.Name</h2>
+                @if (clubs.Count == 0)
+                {
+                    <div class="panel">
+                        <p class="mb-2">No verified clubs offer this sport yet.</p>
+                        <a href="get-involved?sport=@sport.SportId">Register your interest</a> so demand can be counted.
+                    </div>
+                }
+                else
+                {
+                    <ul class="list-unstyled d-grid gap-2">
+                        @foreach (var club in clubs)
+                        {
+                            <li class="item-card">
+                                <h3><a href="clubs/@club.ClubId">@club.Name</a></h3>
+                                <span class="meta">@club.Location</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+            <div class="col-lg-6">
+                <h2>Venues for @sport.Name</h2>
+                @if (venues.Count == 0)
+                {
+                    <div class="panel"><p class="mb-0">No venues are listed for this sport yet.</p></div>
+                }
+                else
+                {
+                    <ul class="list-unstyled d-grid gap-2">
+                        @foreach (var venue in venues)
+                        {
+                            <li class="item-card">
+                                <h3>@venue.Name</h3>
+                                <span class="meta">@venue.Location, @venue.VenueType.ToDisplayText()</span>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+
+        <p class="mt-4"><a href="sports">Back to all sports</a></p>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private bool loading = true;
+    private Sport? sport;
+    private int interestCount;
+    private List<Club> clubs = new();
+    private List<Venue> venues = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        sport = await SportService.GetAsync(Id);
+        if (sport is not null && sport.IsActive)
+        {
+            clubs = await ClubService.SearchAsync(null, Id);
+            venues = await VenueService.SearchAsync(null, Id);
+            interestCount = await SportService.CountInterestAsync(Id);
+        }
+        else
+        {
+            sport = null;
+        }
+
+        loading = false;
+    }
+}

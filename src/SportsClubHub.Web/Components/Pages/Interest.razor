@@ -1,0 +1,174 @@
+@page "/get-involved"
+@rendermode InteractiveNoPrerender
+@inject ParticipantInterestService InterestService
+@inject ClubService ClubService
+@inject SportService SportService
+@inject VenueService VenueService
+
+<div class="container">
+    <PageHeader Title="Register your interest"
+                Subtitle="Tell us which sports you would like to play. We use the totals to show where more clubs and venues are needed." />
+
+    @if (successMessage is not null)
+    {
+        <div class="panel mb-4" role="status">
+            <h2>Thank you</h2>
+            <p>@successMessage</p>
+
+            @if (matchingClubs.Count > 0)
+            {
+                <h3 class="h5">Clubs you could contact</h3>
+                <ul class="list-unstyled d-grid gap-2">
+                    @foreach (var club in matchingClubs)
+                    {
+                        <li class="item-card">
+                            <h3><a href="clubs/@club.ClubId">@club.Name</a></h3>
+                            <span class="meta">@club.Location</span>
+                            <div>
+                                @foreach (var clubSport in club.ClubSports.OrderBy(cs => cs.Sport.Name))
+                                {
+                                    <span class="tag">@clubSport.Sport.Name</span>
+                                }
+                            </div>
+                        </li>
+                    }
+                </ul>
+                <p class="muted">Registering interest does not apply to a club or make you a member. Contact a club directly to join.</p>
+            }
+            else
+            {
+                <p>No verified clubs offer those sports yet. Your interest is still counted, which helps show where new clubs are needed.</p>
+            }
+
+            <button type="button" class="btn btn-outline-primary" @onclick="StartAgain">Register interest in more sports</button>
+        </div>
+    }
+    else
+    {
+        <EditForm Model="form" OnValidSubmit="SubmitAsync" class="col-lg-9">
+            <DataAnnotationsValidator />
+
+            @if (errorMessage is not null)
+            {
+                <div class="alert alert-danger" role="alert">@errorMessage</div>
+            }
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label" for="interest-name">Your name <span class="required-mark" aria-hidden="true">*</span></label>
+                    <InputText id="interest-name" class="form-control" autocomplete="name" @bind-Value="form.Name" />
+                    <ValidationMessage For="() => form.Name" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label" for="interest-email">E-mail address <span class="required-mark" aria-hidden="true">*</span></label>
+                    <InputText id="interest-email" class="form-control" type="email" autocomplete="email" @bind-Value="form.Email" />
+                    <ValidationMessage For="() => form.Email" />
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label" for="interest-location">Your town or area <span class="required-mark" aria-hidden="true">*</span></label>
+                    <InputText id="interest-location" class="form-control" list="interest-location-options" @bind-Value="form.Location" />
+                    <datalist id="interest-location-options">
+                        @foreach (var known in knownLocations)
+                        {
+                            <option value="@known"></option>
+                        }
+                    </datalist>
+                    <ValidationMessage For="() => form.Location" />
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label" for="interest-phone">Phone (optional)</label>
+                    <InputText id="interest-phone" class="form-control" type="tel" autocomplete="tel" @bind-Value="form.Phone" />
+                    <ValidationMessage For="() => form.Phone" />
+                </div>
+            </div>
+
+            <p class="form-label mb-1">Sports you are interested in <span class="required-mark" aria-hidden="true">*</span></p>
+            <SportCheckboxes Sports="sports" Selected="selectedSportIds" IdPrefix="interest-sport" />
+            @if (sportError is not null)
+            {
+                <div class="validation-message mb-3" role="alert">@sportError</div>
+            }
+
+            <div class="panel mb-3">
+                <div class="form-check mb-2">
+                    <InputCheckbox id="interest-adult" class="form-check-input" @bind-Value="form.ConfirmedAdult" />
+                    <label class="form-check-label" for="interest-adult">I am 18 years old or older.</label>
+                    <ValidationMessage For="() => form.ConfirmedAdult" />
+                </div>
+                <div class="form-check">
+                    <InputCheckbox id="interest-privacy" class="form-check-input" @bind-Value="form.AcceptedPrivacyNotice" />
+                    <label class="form-check-label" for="interest-privacy">
+                        I have read the <a href="privacy" target="_blank" rel="noopener">privacy notice</a> and agree that my details may be stored to count interest in sports.
+                    </label>
+                    <ValidationMessage For="() => form.AcceptedPrivacyNotice" />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" disabled="@saving">@(saving ? "Saving..." : "Register my interest")</button>
+        </EditForm>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "sport")]
+    public int? PreselectedSportId { get; set; }
+
+    private ParticipantInterestForm form = new();
+    private List<Sport> sports = new();
+    private List<string> knownLocations = new();
+    private readonly HashSet<int> selectedSportIds = new();
+    private List<Club> matchingClubs = new();
+    private bool saving;
+    private string? successMessage;
+    private string? errorMessage;
+    private string? sportError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sports = await SportService.GetActiveAsync();
+        knownLocations = await VenueService.GetKnownLocationsAsync();
+
+        if (PreselectedSportId is int id && sports.Any(s => s.SportId == id))
+        {
+            selectedSportIds.Add(id);
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        errorMessage = null;
+        sportError = null;
+
+        if (selectedSportIds.Count == 0)
+        {
+            sportError = "Please choose at least one sport.";
+            return;
+        }
+
+        saving = true;
+        var chosen = selectedSportIds.ToList();
+        var result = await InterestService.RegisterAsync(form, chosen);
+
+        if (result.Succeeded)
+        {
+            successMessage = result.Message;
+            matchingClubs = await ClubService.FindOfferingAnyAsync(chosen);
+        }
+        else
+        {
+            errorMessage = result.Message;
+        }
+
+        saving = false;
+    }
+
+    private void StartAgain()
+    {
+        form = new ParticipantInterestForm();
+        selectedSportIds.Clear();
+        matchingClubs = new List<Club>();
+        successMessage = null;
+    }
+}

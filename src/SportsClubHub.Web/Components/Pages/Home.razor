@@ -1,0 +1,57 @@
+@page "/"
+@inject InsightsService InsightsService
+
+<PageTitle>Sports Club Hub | Find a sport, club or venue near you</PageTitle>
+
+<section class="hero">
+    <div class="container">
+        <h1>Find your game, close to home.</h1>
+        <p>Browse the sports played in your community, see which clubs and venues are nearby, and tell us what you would like to play.</p>
+        <div class="d-flex flex-wrap gap-2 mt-4">
+            <a class="btn btn-gold btn-lg" href="clubs">Find a club</a>
+            <a class="btn btn-outline-light-strong btn-lg" href="get-involved">Register your interest</a>
+        </div>
+    </div>
+</section>
+
+<div class="container">
+    <section class="section">
+        <div class="paths">
+            <div class="path">
+                <h2>Explore sports</h2>
+                <p>From football and netball to chess and surfing. See which clubs and venues are available for each sport.</p>
+                <a href="sports">Browse sports</a>
+            </div>
+            <div class="path">
+                <h2>Tell us what you want to play</h2>
+                <p>Register your interest in one or more sports. We show you clubs that offer them, and your details stay private.</p>
+                <a href="get-involved">Register your interest</a>
+            </div>
+            <div class="path">
+                <h2>Run a club?</h2>
+                <p>Add your club to the directory so residents can find you. An administrator checks each new club before it is listed.</p>
+                <a href="clubs/register">Register a club</a>
+            </div>
+        </div>
+    </section>
+
+    @if (counts is not null && (counts.VerifiedClubs + counts.ActiveSports + counts.ActiveVenues) > 0)
+    {
+        <section class="section pt-0" aria-label="Directory size">
+            <div class="figures">
+                <div><div class="figure-number">@counts.ActiveSports</div><div class="figure-label">sports listed</div></div>
+                <div><div class="figure-number">@counts.VerifiedClubs</div><div class="figure-label">verified clubs</div></div>
+                <div><div class="figure-number">@counts.ActiveVenues</div><div class="figure-label">venues</div></div>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private DirectoryCounts? counts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        counts = await InsightsService.GetDirectoryCountsAsync();
+    }
+}

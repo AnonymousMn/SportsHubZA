@@ -1,0 +1,56 @@
+@inherits LayoutComponentBase
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<header class="site-header">
+    <div class="container site-header-inner">
+        <a class="brand" href="/" aria-label="Sports Club Hub home">
+            <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+                <rect x="1" y="3" width="30" height="26" rx="3" fill="none" stroke="currentColor" stroke-width="2" />
+                <line x1="16" y1="3" x2="16" y2="29" stroke="currentColor" stroke-width="2" />
+                <circle cx="16" cy="16" r="5" fill="none" stroke="currentColor" stroke-width="2" />
+            </svg>
+            <span>Sports Club Hub</span>
+        </a>
+
+        <nav class="site-nav" aria-label="Main navigation">
+            <NavLink href="sports">Sports</NavLink>
+            <NavLink href="clubs">Clubs</NavLink>
+            <NavLink href="venues">Venues</NavLink>
+            <NavLink href="get-involved">Get involved</NavLink>
+            <NavLink href="insights">Insights</NavLink>
+        </nav>
+
+        <div class="site-account">
+            <AuthorizeView>
+                <Authorized>
+                    <NavLink href="admin">Admin</NavLink>
+                    <NavLink href="account/logout">Sign out</NavLink>
+                </Authorized>
+                <NotAuthorized>
+                    <NavLink href="account/login">Staff sign in</NavLink>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </div>
+</header>
+
+<main id="main-content" tabindex="-1">
+    @Body
+</main>
+
+<footer class="site-footer">
+    <div class="container">
+        <p class="mb-1">Sports Club Hub is a community directory of sports, clubs and venues.</p>
+        <p class="mb-0">
+            Participant details are kept private and are never listed publicly.
+            <a href="/privacy">Read the privacy notice</a>.
+        </p>
+    </div>
+</footer>
+
+<div id="blazor-error-ui" role="alert">
+    Something went wrong.
+    <a href="" class="reload">Reload the page</a>
+    <a class="dismiss" aria-label="Dismiss">x</a>
+</div>

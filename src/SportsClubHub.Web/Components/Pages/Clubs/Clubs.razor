@@ -1,0 +1,86 @@
+@page "/clubs"
+@rendermode InteractiveNoPrerender
+@inject ClubService ClubService
+@inject SportService SportService
+
+<div class="container">
+    <PageHeader Title="Clubs" Subtitle="Find a club by name or area, or by the sport you want to play." />
+
+    <div class="filter-bar">
+        <div>
+            <label class="form-label" for="club-search">Club name or area</label>
+            <input id="club-search" class="form-control" type="search" placeholder="For example: Buffalo City"
+                   @bind="search" @bind:event="oninput" @bind:after="LoadAsync" />
+        </div>
+        <div>
+            <label class="form-label" for="club-sport">Sport</label>
+            <select id="club-sport" class="form-select" @bind="sportText" @bind:after="LoadAsync">
+                <option value="">All sports</option>
+                @foreach (var sport in sports)
+                {
+                    <option value="@sport.SportId">@sport.Name</option>
+                }
+            </select>
+        </div>
+    </div>
+
+    @if (clubs is null)
+    {
+        <p class="muted" role="status">Loading clubs...</p>
+    }
+    else if (clubs.Count == 0)
+    {
+        <div class="panel">
+            <p class="mb-2">No clubs match your search.</p>
+            <p class="mb-0">Try a different area or sport, or <a href="clubs/register">register your club</a>.</p>
+        </div>
+    }
+    else
+    {
+        <p class="muted" role="status">@clubs.Count @(clubs.Count == 1 ? "club" : "clubs") found</p>
+        <div class="row g-3">
+            @foreach (var club in clubs)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <article class="item-card">
+                        <h2><a href="clubs/@club.ClubId">@club.Name</a></h2>
+                        <span class="meta">@club.Location</span>
+                        <div>
+                            @foreach (var clubSport in club.ClubSports.OrderBy(cs => cs.Sport.Name))
+                            {
+                                <span class="tag">@clubSport.Sport.Name</span>
+                            }
+                        </div>
+                    </article>
+                </div>
+            }
+        </div>
+    }
+
+    <p class="mt-4">Run a club that is not listed? <a href="clubs/register">Register your club</a>.</p>
+</div>
+
+@code {
+    private string search = string.Empty;
+    private string sportText = string.Empty;
+    private List<Sport> sports = new();
+    private List<Club>? clubs;
+    private int requestNumber;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sports = await SportService.GetActiveAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var thisRequest = ++requestNumber;
+        int? sportId = int.TryParse(sportText, out var parsed) ? parsed : null;
+        var result = await ClubService.SearchAsync(search, sportId);
+        if (thisRequest == requestNumber)
+        {
+            clubs = result;
+        }
+    }
+}

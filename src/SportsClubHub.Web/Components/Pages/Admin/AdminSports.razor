@@ -1,0 +1,148 @@
+@page "/admin/sports"
+@attribute [Authorize(Roles = AppRoles.Administrator)]
+@rendermode InteractiveNoPrerender
+@inject SportService SportService
+
+<div class="container">
+    <PageHeader Title="Manage sports" Subtitle="Add or edit sports. Deactivating a sport hides it from the public pages but keeps its history." />
+    <AdminNav />
+
+    @if (message is not null)
+    {
+        <div class="alert alert-success" role="status">@message</div>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+            @if (items is null)
+            {
+                <p class="muted" role="status">Loading...</p>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data">
+                        <thead><tr><th scope="col">Sport</th><th scope="col">Category</th><th scope="col">Clubs</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+                        <tbody>
+                            @foreach (var item in items)
+                            {
+                                <tr>
+                                    <td>@item.Sport.Name</td>
+                                    <td>@item.Sport.Category.ToDisplayText()</td>
+                                    <td>@item.ClubCount</td>
+                                    <td>@if (item.Sport.IsActive) { <span class="tag">Active</span> } else { <span class="tag tag-warn">Inactive</span> }</td>
+                                    <td class="text-nowrap">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => Edit(item.Sport)">Edit</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleActiveAsync(item.Sport)">
+                                            @(item.Sport.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="col-lg-4">
+            <div class="panel">
+                <h2>@(editing.SportId == 0 ? "Add a sport" : "Edit sport")</h2>
+                <EditForm Model="editing" OnValidSubmit="SaveAsync">
+                    <DataAnnotationsValidator />
+                    @if (errorMessage is not null)
+                    {
+                        <div class="alert alert-danger" role="alert">@errorMessage</div>
+                    }
+                    <div class="mb-3">
+                        <label class="form-label" for="sport-name">Name</label>
+                        <InputText id="sport-name" class="form-control" @bind-Value="editing.Name" />
+                        <ValidationMessage For="() => editing.Name" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="sport-category-edit">Category</label>
+                        <InputSelect id="sport-category-edit" class="form-select" @bind-Value="editing.Category">
+                            @foreach (var category in Enum.GetValues<SportCategory>())
+                            {
+                                <option value="@category">@category.ToDisplayText()</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="sport-facility">Usual facility</label>
+                        <InputText id="sport-facility" class="form-control" @bind-Value="editing.TypicalFacilityType" />
+                        <ValidationMessage For="() => editing.TypicalFacilityType" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="sport-description">Description</label>
+                        <InputTextArea id="sport-description" class="form-control" rows="3" @bind-Value="editing.Description" />
+                        <ValidationMessage For="() => editing.Description" />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save sport</button>
+                    @if (editing.SportId != 0)
+                    {
+                        <button type="button" class="btn btn-link" @onclick="CancelEdit">Cancel</button>
+                    }
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<SportListItem>? items;
+    private Sport editing = new();
+    private string? message;
+    private string? errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync() => items = await SportService.SearchAsync(null, null, includeInactive: true);
+
+    // Edit a copy so unsaved changes never alter the list on screen.
+    private void Edit(Sport sport)
+    {
+        editing = new Sport
+        {
+            SportId = sport.SportId,
+            Name = sport.Name,
+            Category = sport.Category,
+            Description = sport.Description,
+            TypicalFacilityType = sport.TypicalFacilityType,
+            IsActive = sport.IsActive
+        };
+        message = null;
+        errorMessage = null;
+    }
+
+    private void CancelEdit()
+    {
+        editing = new Sport();
+        errorMessage = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        var wasNew = editing.SportId == 0;
+        var result = await SportService.SaveAsync(editing);
+        if (result.Succeeded)
+        {
+            message = wasNew ? "Sport added." : "Sport updated.";
+            errorMessage = null;
+            editing = new Sport();
+            await LoadAsync();
+        }
+        else
+        {
+            errorMessage = result.Error;
+        }
+    }
+
+    private async Task ToggleActiveAsync(Sport sport)
+    {
+        var result = await SportService.SetActiveAsync(sport.SportId, !sport.IsActive);
+        message = result.Succeeded ? (sport.IsActive ? "Sport deactivated." : "Sport activated.") : null;
+        errorMessage = result.Error;
+        await LoadAsync();
+    }
+}

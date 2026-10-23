@@ -1,0 +1,44 @@
+@* One check box per sport, grouped by category. The page that uses this owns the Selected set. *@
+
+@foreach (var group in Sports.GroupBy(s => s.Category).OrderBy(g => g.Key))
+{
+    <fieldset class="checkbox-group">
+        <legend>@group.Key.ToDisplayText()</legend>
+        <div class="checkbox-grid">
+            @foreach (var sport in group.OrderBy(s => s.Name))
+            {
+                var inputId = $"{IdPrefix}-{sport.SportId}";
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="@inputId"
+                           checked="@Selected.Contains(sport.SportId)"
+                           @onchange="e => Toggle(sport.SportId, e)" />
+                    <label class="form-check-label" for="@inputId">@sport.Name</label>
+                </div>
+            }
+        </div>
+    </fieldset>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyCollection<Sport> Sports { get; set; } = Array.Empty<Sport>();
+
+    [Parameter, EditorRequired]
+    public HashSet<int> Selected { get; set; } = new();
+
+    /// <summary>Makes the HTML ids unique when a page shows two lists.</summary>
+    [Parameter]
+    public string IdPrefix { get; set; } = "sport";
+
+    private void Toggle(int sportId, ChangeEventArgs e)
+    {
+        if (e.Value is true)
+        {
+            Selected.Add(sportId);
+        }
+        else
+        {
+            Selected.Remove(sportId);
+        }
+    }
+}

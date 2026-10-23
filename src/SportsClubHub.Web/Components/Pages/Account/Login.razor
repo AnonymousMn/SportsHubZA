@@ -1,0 +1,92 @@
+@page "/account/login"
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Authentication.Cookies
+@inject AdminAccountService AdminAccounts
+@inject NavigationManager Navigation
+
+<PageTitle>Staff sign in | Sports Club Hub</PageTitle>
+
+@* This page is plain server-rendered HTML (no render mode) because only a normal HTTP request can set the sign-in cookie. *@
+
+<div class="container">
+    <div class="page-header">
+        <h1>Staff sign in</h1>
+        <p class="lead">For club directory administrators. Residents do not need an account.</p>
+    </div>
+
+    <div class="panel col-md-8 col-lg-5">
+        <EditForm Model="Input" method="post" OnValidSubmit="SignInAsync" FormName="staff-sign-in">
+            <DataAnnotationsValidator />
+
+            @if (errorMessage is not null)
+            {
+                <div class="alert alert-danger" role="alert">@errorMessage</div>
+            }
+
+            <div class="mb-3">
+                <label class="form-label" for="login-email">E-mail address</label>
+                <InputText id="login-email" class="form-control" type="email" autocomplete="username" @bind-Value="Input.Email" />
+                <ValidationMessage For="() => Input.Email" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="login-password">Password</label>
+                <InputText id="login-password" class="form-control" type="password" autocomplete="current-password" @bind-Value="Input.Password" />
+                <ValidationMessage For="() => Input.Password" />
+            </div>
+            <button type="submit" class="btn btn-primary">Sign in</button>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private LoginInput Input { get; set; } = new();
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    private string? errorMessage;
+
+    private async Task SignInAsync()
+    {
+        var admin = await AdminAccounts.ValidateAsync(Input.Email, Input.Password);
+        if (admin is null)
+        {
+            // Same message whether the e-mail or the password was wrong.
+            errorMessage = "The e-mail address or password is not correct.";
+            return;
+        }
+
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, admin.AdminUserId.ToString()),
+            new(ClaimTypes.Name, admin.Email),
+            new(ClaimTypes.Role, AppRoles.Administrator)
+        };
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            new ClaimsPrincipal(identity));
+
+        Navigation.NavigateTo(IsLocalUrl(ReturnUrl) ? ReturnUrl! : "/admin", forceLoad: true);
+    }
+
+    // Only follow return addresses on this site, so the sign-in page cannot be used to bounce people elsewhere.
+    private static bool IsLocalUrl(string? url) =>
+        !string.IsNullOrEmpty(url) && url.StartsWith('/') && !url.StartsWith("//") && !url.StartsWith("/\\");
+
+    private sealed class LoginInput
+    {
+        [Required(ErrorMessage = "Please enter your e-mail address."), EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please enter your password.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

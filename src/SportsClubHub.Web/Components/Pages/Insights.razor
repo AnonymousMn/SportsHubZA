@@ -1,0 +1,126 @@
+@page "/insights"
+@rendermode InteractiveNoPrerender
+@inject InsightsService InsightsService
+
+<div class="container">
+    <PageHeader Title="Community sports insights"
+                Subtitle="Totals only. Nothing on this page identifies a person." />
+
+    <p class="notice">
+        An <strong>interest registration</strong> means a resident said they would like to take part in a sport.
+        It is not confirmed participation and it is not club membership.
+    </p>
+
+    @if (insights is null)
+    {
+        <p class="muted" role="status">Loading insights...</p>
+    }
+    else
+    {
+        <section class="section pb-0" aria-label="Totals">
+            <div class="figures">
+                <div><div class="figure-number">@insights.VerifiedClubCount</div><div class="figure-label">verified clubs</div></div>
+                <div><div class="figure-number">@insights.ActiveSportCount</div><div class="figure-label">sports listed</div></div>
+                <div><div class="figure-number">@insights.ActiveVenueCount</div><div class="figure-label">venues</div></div>
+                <div><div class="figure-number">@insights.InterestRegistrationCount</div><div class="figure-label">interest registrations</div></div>
+            </div>
+        </section>
+
+        @if (!insights.HasInterestData)
+        {
+            <section class="section">
+                <div class="panel">
+                    <h2>No interest registered yet</h2>
+                    <p class="mb-0">Charts appear here once residents start to <a href="get-involved">register their interest</a>.</p>
+                </div>
+            </section>
+        }
+        else
+        {
+            var maxInterest = insights.MostPopularSports.Max(s => s.InterestCount);
+
+            <section class="section" aria-labelledby="popular-heading">
+                <h2 id="popular-heading">Most popular sports by interest registrations</h2>
+                @foreach (var sport in insights.MostPopularSports)
+                {
+                    var percent = (int)Math.Round(100.0 * sport.InterestCount / maxInterest);
+                    <div class="bar-row">
+                        <a href="sports/@sport.SportId">@sport.SportName</a>
+                        <div class="bar-track" aria-hidden="true"><div class="bar-fill" style="width: @(percent)%"></div></div>
+                        <span>@sport.InterestCount</span>
+                    </div>
+                }
+            </section>
+
+            <section class="section pt-0" aria-labelledby="underserved-heading">
+                <h2 id="underserved-heading">Sports with interest but few clubs</h2>
+                <p class="muted">Sports with no verified club, or at least three interest registrations for every verified club.</p>
+                @if (insights.UnderservedSports.Count == 0)
+                {
+                    <p>Every sport with registered interest currently has enough verified clubs by this measure.</p>
+                }
+                else
+                {
+                    <div class="table-scroll">
+                        <table class="data">
+                            <thead><tr><th scope="col">Sport</th><th scope="col">Interest registrations</th><th scope="col">Verified clubs</th></tr></thead>
+                            <tbody>
+                                @foreach (var sport in insights.UnderservedSports)
+                                {
+                                    <tr><td><a href="sports/@sport.SportId">@sport.SportName</a></td><td>@sport.InterestCount</td><td>@sport.ClubCount</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        }
+
+        <section class="section pt-0">
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <h2>Verified clubs by location</h2>
+                    @if (insights.ClubsByLocation.Count == 0)
+                    {
+                        <p class="muted">No verified clubs yet.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled">
+                            @foreach (var location in insights.ClubsByLocation)
+                            {
+                                <li class="d-flex justify-content-between border-bottom py-1"><span>@location.Location</span><strong>@location.Count</strong></li>
+                            }
+                        </ul>
+                    }
+                </div>
+                <div class="col-lg-6">
+                    <h2>People who registered interest, by location</h2>
+                    @if (insights.ParticipantsByLocation.Count == 0)
+                    {
+                        <p class="muted">Locations are shown only once at least @CommunityInsights.MinimumGroupSize people have registered there, to protect privacy.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled">
+                            @foreach (var location in insights.ParticipantsByLocation)
+                            {
+                                <li class="d-flex justify-content-between border-bottom py-1"><span>@location.Location</span><strong>@location.Count</strong></li>
+                            }
+                        </ul>
+                        <p class="muted">Locations with fewer than @CommunityInsights.MinimumGroupSize people are hidden to protect privacy.</p>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    private CommunityInsights? insights;
+
+    protected override async Task OnInitializedAsync()
+    {
+        insights = await InsightsService.GetAsync();
+    }
+}
