@@ -126,6 +126,12 @@ Design choices that are worth knowing:
 - Club directory: search by name/location, filter by sport, detail page with teams and the club's own contact details, public registration form (starts as *Pending*), admin verify/reject/edit/deactivate and team management
 - Participant interest registration with validation, mandatory adult and privacy-notice confirmations, duplicate prevention, and matching clubs shown afterwards
 - Venue directory: filter by location and sport; admin add/edit/deactivate with supported sports
+- Venue bulk import: authorised staff can preview and import multiple CSV/TXT files using the documented venue template
+  - Required headers: `Name`, `Location`, `VenueType`, and `Sports`
+  - Optional headers: `Address`, `SurfaceType`, and `Capacity`
+  - `VenueType` is matched to the existing enum (for example `Field`, `Court`, `Hall`)
+  - Put multiple sport names in `Sports` separated by semicolons, for example `Football;Cricket`
+  - Existing and duplicate venues are reported in the preview and are never silently skipped
 - Insights (public, aggregate only): counts, most popular sports, sports with interest but few clubs, clubs and people by location
 - Staff sign in with cookie authentication, hashed passwords, role-based authorisation on all `/admin` pages
 - Privacy notice page (a template to be completed by the operator)

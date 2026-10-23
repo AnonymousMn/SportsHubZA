@@ -1,9 +1,17 @@
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using SportsClubHub.Domain.Common;
 using SportsClubHub.Domain.Entities;
 using SportsClubHub.Web.Data;
 
 namespace SportsClubHub.Web.Services;
+
+public record VenueImportRow(
+    int RowNumber,
+    string SourceFile,
+    Venue? Venue,
+    IReadOnlyList<string> SportNames,
+    string? Error);
 
 public class VenueService
 {
@@ -133,5 +141,196 @@ public class VenueService
         venue.IsActive = isActive;
         await db.SaveChangesAsync();
         return OperationResult.Success();
+    }
+
+    public async Task<List<VenueImportRow>> PreviewImportAsync(IReadOnlyCollection<(string FileName, string Content)> files)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var sports = await db.Sports.AsNoTracking().Where(s => s.IsActive).ToListAsync();
+        var knownSports = sports.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+        var existingKeys = (await db.Venues.AsNoTracking()
+                .Select(v => new { v.Name, v.Location })
+                .ToListAsync())
+            .Select(v => $"{v.Name.Trim().ToLowerInvariant()}|{v.Location.Trim().ToLowerInvariant()}")
+            .ToHashSet();
+        var rows = new List<VenueImportRow>();
+
+        foreach (var file in files)
+        {
+            var lines = file.Content.Split(new[] { "\r\n", "\n", "\r" }, StringSplitOptions.None);
+            if (lines.Length == 0 || string.IsNullOrWhiteSpace(lines[0]))
+            {
+                continue;
+            }
+
+            var header = ParseDelimitedLine(lines[0]);
+            var missingHeaders = new[] { "Name", "Location", "VenueType", "Sports" }
+                .Where(required => !header.Any(actual => string.Equals(actual, required, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+            if (missingHeaders.Count > 0)
+            {
+                rows.Add(new VenueImportRow(1, file.FileName, null, Array.Empty<string>(),
+                    $"Missing required header(s): {string.Join(", ", missingHeaders)}."));
+                continue;
+            }
+
+            var start = 1;
+            for (var index = start; index < lines.Length; index++)
+            {
+                if (string.IsNullOrWhiteSpace(lines[index]))
+                {
+                    continue;
+                }
+
+                var fields = ParseDelimitedLine(lines[index]);
+                var rowNumber = index + 1;
+                if (fields.Count < 7)
+                {
+                    rows.Add(new VenueImportRow(rowNumber, file.FileName, null, Array.Empty<string>(),
+                        "Expected 7 columns: Name, Location, Address, VenueType, SurfaceType, Capacity, Sports."));
+                    continue;
+                }
+
+                var venueTypeText = InputNormaliser.Text(fields[3]);
+                var sportNames = fields[6]
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .ToList();
+                var unknownSports = sportNames.Where(name => !knownSports.ContainsKey(name)).ToList();
+                var error = ValidateImportRow(fields, venueTypeText, sportNames, unknownSports);
+                if (error is not null)
+                {
+                    rows.Add(new VenueImportRow(rowNumber, file.FileName, null, sportNames, error));
+                    continue;
+                }
+
+                _ = Enum.TryParse<VenueType>(venueTypeText, true, out var venueType);
+                _ = int.TryParse(fields[5], NumberStyles.Integer, CultureInfo.InvariantCulture, out var capacity);
+                var venue = new Venue
+                {
+                    Name = fields[0],
+                    Location = fields[1],
+                    Address = fields[2],
+                    VenueType = venueType,
+                    SurfaceType = fields[4],
+                    Capacity = string.IsNullOrWhiteSpace(fields[5]) ? null : capacity
+                };
+                var key = $"{venue.Name.Trim().ToLowerInvariant()}|{venue.Location.Trim().ToLowerInvariant()}";
+                var duplicateError = existingKeys.Add(key)
+                    ? null
+                    : "Duplicate venue in this import or the existing database.";
+                rows.Add(new VenueImportRow(rowNumber, file.FileName, venue, sportNames, duplicateError));
+            }
+        }
+
+        return rows;
+    }
+
+    public async Task<OperationResult> ImportAsync(IReadOnlyCollection<VenueImportRow> rows)
+    {
+        var invalid = rows.FirstOrDefault(row => row.Venue is null || row.Error is not null);
+        if (invalid is not null)
+        {
+            return OperationResult.Fail("Fix the invalid rows before importing.");
+        }
+
+        await using var db = await _factory.CreateDbContextAsync();
+        var sports = await db.Sports.Where(s => s.IsActive).ToListAsync();
+        var knownSports = sports.ToDictionary(s => s.Name, StringComparer.OrdinalIgnoreCase);
+        var existingKeys = (await db.Venues
+                .Select(v => new { v.Name, v.Location })
+                .ToListAsync())
+            .Select(v => $"{v.Name.Trim().ToLowerInvariant()}|{v.Location.Trim().ToLowerInvariant()}")
+            .ToHashSet();
+
+        foreach (var row in rows)
+        {
+            var venue = row.Venue!;
+            venue.Name = InputNormaliser.Text(venue.Name);
+            venue.Location = InputNormaliser.Text(venue.Location);
+            venue.Address = InputNormaliser.NullIfBlank(venue.Address);
+            venue.SurfaceType = InputNormaliser.NullIfBlank(venue.SurfaceType);
+            var key = $"{venue.Name.ToLowerInvariant()}|{venue.Location.ToLowerInvariant()}";
+            if (!existingKeys.Add(key))
+            {
+                return OperationResult.Fail($"Duplicate venue in import or database: {venue.Name} ({venue.Location}).");
+            }
+
+            foreach (var sportName in row.SportNames)
+            {
+                venue.VenueSports.Add(new VenueSport { SportId = knownSports[sportName].SportId });
+            }
+
+            db.Venues.Add(venue);
+        }
+
+        await db.SaveChangesAsync();
+        return OperationResult.Success();
+    }
+
+    private static string? ValidateImportRow(
+        IReadOnlyList<string> fields,
+        string venueTypeText,
+        IReadOnlyList<string> sportNames,
+        IReadOnlyList<string> unknownSports)
+    {
+        if (string.IsNullOrWhiteSpace(fields[0]) || string.IsNullOrWhiteSpace(fields[1]))
+        {
+            return "Name and Location are required.";
+        }
+
+        if (!Enum.TryParse<VenueType>(venueTypeText, true, out _))
+        {
+            return $"VenueType must be one of: {string.Join(", ", Enum.GetNames<VenueType>())}.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(fields[5]) &&
+            (!int.TryParse(fields[5], NumberStyles.Integer, CultureInfo.InvariantCulture, out var capacity) || capacity is < 1 or > 200000))
+        {
+            return "Capacity must be a whole number between 1 and 200000.";
+        }
+
+        if (sportNames.Count == 0)
+        {
+            return "At least one sport is required.";
+        }
+
+        return unknownSports.Count > 0 ? $"Unknown sport(s): {string.Join(", ", unknownSports)}." : null;
+    }
+
+    private static List<string> ParseDelimitedLine(string line)
+    {
+        var delimiter = line.Contains('\t') ? '\t' : line.Contains(';') && !line.Contains(',') ? ';' : ',';
+        var fields = new List<string>();
+        var field = new System.Text.StringBuilder();
+        var quoted = false;
+
+        for (var index = 0; index < line.Length; index++)
+        {
+            var character = line[index];
+            if (character == '"')
+            {
+                if (quoted && index + 1 < line.Length && line[index + 1] == '"')
+                {
+                    field.Append('"');
+                    index++;
+                }
+                else
+                {
+                    quoted = !quoted;
+                }
+            }
+            else if (character == delimiter && !quoted)
+            {
+                fields.Add(field.ToString().Trim());
+                field.Clear();
+            }
+            else
+            {
+                field.Append(character);
+            }
+        }
+
+        fields.Add(field.ToString().Trim());
+        return fields;
     }
 }
