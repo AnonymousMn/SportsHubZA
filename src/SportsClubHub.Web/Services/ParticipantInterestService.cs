@@ -14,8 +14,13 @@ public record InterestRegistrationResult(bool Succeeded, string Message);
 public class ParticipantInterestService
 {
     private readonly IDbContextFactory<AppDbContext> _factory;
+    private readonly EmailService? _email;
 
-    public ParticipantInterestService(IDbContextFactory<AppDbContext> factory) => _factory = factory;
+    public ParticipantInterestService(IDbContextFactory<AppDbContext> factory, EmailService? email = null)
+    {
+        _factory = factory;
+        _email = email;
+    }
 
     public async Task<InterestRegistrationResult> RegisterAsync(ParticipantInterestForm form, IReadOnlyCollection<int> sportIds)
     {
@@ -83,6 +88,14 @@ public class ParticipantInterestService
         // The wording is the same for new and returning people so the form cannot be used
         // to discover whether an e-mail address is already registered.
         var names = string.Join(", ", sports.Select(s => s.Name));
+        if (_email is not null)
+        {
+            await _email.TrySendAsync(
+                email,
+                "Sports Club Hub SA interest acknowledgement",
+                $"Hello {participant.Name},\n\nThank you for expressing interest in {names}. Your registration has been received.\n\nSports Club Hub SA",
+                "interest acknowledgement");
+        }
         return new(true, $"Thank you. Your interest in {names} has been recorded.");
     }
 }

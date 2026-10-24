@@ -133,6 +133,21 @@ Design choices that are worth knowing:
   - Put multiple sport names in `Sports` separated by semicolons, for example `Football;Cricket`
   - Existing and duplicate venues are reported in the preview and are never silently skipped
 - Duplicate protection: new duplicate sports, clubs, venues, teams, participant emails, admin emails, and relationship rows are rejected; existing duplicate records are preserved and logged rather than deleted automatically
+- Email notifications: optional Gmail SMTP acknowledgements for club and interest registrations, plus verification and rejection notifications for clubs
+
+### Gmail notifications
+
+Set these environment variables on Render to enable email. A normal Gmail account is supported, but Gmail requires 2-Step Verification and a Google App Password; do not use the normal Gmail account password.
+
+```text
+Email__Enabled=true
+Email__Host=smtp.gmail.com
+Email__Port=587
+Email__Username=your-gmail-address@gmail.com
+Email__Password=your-google-app-password
+Email__FromAddress=your-gmail-address@gmail.com
+Email__FromName=Sports Club Hub SA
+```
 - Insights (public, aggregate only): counts, most popular sports, sports with interest but few clubs, clubs and people by location
 - Staff sign in with cookie authentication, hashed passwords, role-based authorisation on all `/admin` pages
 - Privacy notice page (a template to be completed by the operator)

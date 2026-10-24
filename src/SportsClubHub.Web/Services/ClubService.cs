@@ -8,8 +8,13 @@ namespace SportsClubHub.Web.Services;
 public class ClubService
 {
     private readonly IDbContextFactory<AppDbContext> _factory;
+    private readonly EmailService? _email;
 
-    public ClubService(IDbContextFactory<AppDbContext> factory) => _factory = factory;
+    public ClubService(IDbContextFactory<AppDbContext> factory, EmailService? email = null)
+    {
+        _factory = factory;
+        _email = email;
+    }
 
     /// <summary>
     /// Searches clubs by name or location, optionally for one sport.
@@ -111,6 +116,14 @@ public class ClubService
 
         db.Clubs.Add(club);
         await db.SaveChangesAsync();
+        if (_email is not null)
+        {
+            await _email.TrySendAsync(
+                club.ContactEmail,
+                "Sports Club Hub SA registration received",
+                $"Hello,\n\nWe received the registration for {club.Name} in {club.Location}.\n\nYour registration is pending staff verification. We will email you when the status changes.\n\nSports Club Hub SA",
+                "club registration acknowledgement");
+        }
         return OperationResult.Success();
     }
 
@@ -183,8 +196,23 @@ public class ClubService
             return OperationResult.Fail("Club not found.");
         }
 
+        var previousStatus = club.VerificationStatus;
         club.VerificationStatus = status;
         await db.SaveChangesAsync();
+        if (_email is not null && previousStatus != status)
+        {
+            var subject = status == VerificationStatus.Verified
+                ? "Your Sports Club Hub SA registration was verified"
+                : status == VerificationStatus.Rejected
+                    ? "Update on your Sports Club Hub SA registration"
+                    : "Update on your Sports Club Hub SA registration";
+            var body = status == VerificationStatus.Verified
+                ? $"Hello,\n\nYour registration for {club.Name} has been verified and can now appear in the public directory.\n\nSports Club Hub SA"
+                : status == VerificationStatus.Rejected
+                    ? $"Hello,\n\nYour registration for {club.Name} was not approved at this time. Please contact Sports Club Hub SA if you need more information.\n\nSports Club Hub SA"
+                    : $"Hello,\n\nThe status of your registration for {club.Name} is now {status}.\n\nSports Club Hub SA";
+            await _email.TrySendAsync(club.ContactEmail, subject, body, $"club {status} notification");
+        }
         return OperationResult.Success();
     }
 

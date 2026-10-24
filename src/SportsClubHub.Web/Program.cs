@@ -37,6 +37,7 @@ builder.Services.AddScoped<ParticipantInterestService>();
 builder.Services.AddScoped<InsightsService>();
 builder.Services.AddScoped<AdminAccountService>();
 builder.Services.AddScoped<DatabaseInitializer>();
+builder.Services.AddSingleton<EmailService>();
 
 // ---------- Authentication and authorisation ----------
 builder.Services
