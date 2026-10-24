@@ -36,7 +36,9 @@ public class TeamService
         }
 
         var nameTaken = await db.Teams.AnyAsync(t =>
-            t.TeamId != team.TeamId && t.ClubId == team.ClubId && t.Name.ToLower() == team.Name.ToLower());
+            t.TeamId != team.TeamId &&
+            t.ClubId == team.ClubId &&
+            t.Name.ToLower() == team.Name.ToLower());
         if (nameTaken)
         {
             return OperationResult.Fail($"This club already has a team called \"{team.Name}\".");

@@ -121,4 +121,20 @@ public class VenueImportTests
         Assert.Single(await service.SearchAsync(null, null));
         Assert.NotNull(rows[1].Error);
     }
+
+    [Fact]
+    public async Task Preview_DeduplicatesRepeatedSportsInOneRow()
+    {
+        using var database = new TestDatabase();
+        await database.AddSportAsync("Football");
+        var service = new VenueService(database);
+
+        var rows = await service.PreviewImportAsync(new[]
+        {
+            ("venues.csv", "Name,Location,VenueType,Sports\n" +
+             "Central Ground,Gqeberha,Field,Football;football;Football")
+        });
+
+        Assert.Equal(new[] { "Football" }, Assert.Single(rows).SportNames);
+    }
 }

@@ -132,6 +132,7 @@ Design choices that are worth knowing:
   - `VenueType` is matched to the existing enum (for example `Field`, `Court`, `Hall`)
   - Put multiple sport names in `Sports` separated by semicolons, for example `Football;Cricket`
   - Existing and duplicate venues are reported in the preview and are never silently skipped
+- Duplicate protection: new duplicate sports, clubs, venues, teams, participant emails, admin emails, and relationship rows are rejected; existing duplicate records are preserved and logged rather than deleted automatically
 - Insights (public, aggregate only): counts, most popular sports, sports with interest but few clubs, clubs and people by location
 - Staff sign in with cookie authentication, hashed passwords, role-based authorisation on all `/admin` pages
 - Privacy notice page (a template to be completed by the operator)

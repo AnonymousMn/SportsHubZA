@@ -209,6 +209,7 @@ public class VenueService
                 var venueTypeText = InputNormaliser.Text(fields[3]);
                 var sportNames = fields[6]
                     .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
                 var unknownSports = sportNames.Where(name => !knownSports.ContainsKey(name)).ToList();
                 var error = ValidateImportRow(fields, venueTypeText, sportNames, unknownSports);
@@ -256,6 +257,7 @@ public class VenueService
                 .ToListAsync())
             .Select(v => $"{v.Name.Trim().ToLowerInvariant()}|{v.Location.Trim().ToLowerInvariant()}")
             .ToHashSet();
+        var importKeys = new HashSet<string>();
 
         foreach (var row in validRows)
         {
@@ -265,7 +267,7 @@ public class VenueService
             venue.Address = InputNormaliser.NullIfBlank(venue.Address);
             venue.SurfaceType = InputNormaliser.NullIfBlank(venue.SurfaceType);
             var key = $"{venue.Name.ToLowerInvariant()}|{venue.Location.ToLowerInvariant()}";
-            if (!existingKeys.Add(key))
+            if (!existingKeys.Add(key) || !importKeys.Add(key))
             {
                 return OperationResult.Fail($"Duplicate venue in import or database: {venue.Name} ({venue.Location}).");
             }

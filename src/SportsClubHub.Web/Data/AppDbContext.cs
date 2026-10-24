@@ -39,6 +39,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Participant>().HasIndex(p => p.Email).IsUnique();
         modelBuilder.Entity<AdminUser>().HasIndex(a => a.Email).IsUnique();
         modelBuilder.Entity<Club>().HasIndex(c => new { c.Name, c.Location }).IsUnique();
+        modelBuilder.Entity<Venue>().HasIndex(v => new { v.Name, v.Location }).IsUnique();
+        modelBuilder.Entity<Team>().HasIndex(t => new { t.ClubId, t.Name }).IsUnique();
 
         // --- Relationships ---
         // Deleting a club or venue removes its join rows. Sports and clubs that have teams cannot

@@ -33,6 +33,7 @@ public class DatabaseInitializer
 
         await db.Database.EnsureCreatedAsync();
         await EnsureSportImageColumnAsync(db);
+        await EnsureDuplicateProtectionIndexesAsync(db);
 
         if (!await db.Sports.AnyAsync())
         {
@@ -70,6 +71,7 @@ public class DatabaseInitializer
                         break;
                     }
                 }
+
             }
 
             if (!hasImageUrl)
@@ -77,6 +79,46 @@ public class DatabaseInitializer
                 await using var alter = db.Database.GetDbConnection().CreateCommand();
                 alter.CommandText = "ALTER TABLE Sports ADD COLUMN ImageUrl TEXT NULL;";
                 await alter.ExecuteNonQueryAsync();
+            }
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
+        }
+    }
+
+    private async Task EnsureDuplicateProtectionIndexesAsync(AppDbContext db)
+    {
+        var indexes = new[]
+        {
+            ("IX_Sports_Name_NoCase", "Sports", "Name COLLATE NOCASE"),
+            ("IX_Clubs_Name_Location_NoCase", "Clubs", "Name COLLATE NOCASE, Location COLLATE NOCASE"),
+            ("IX_Venues_Name_Location_NoCase", "Venues", "Name COLLATE NOCASE, Location COLLATE NOCASE"),
+            ("IX_Teams_ClubId_Name_NoCase", "Teams", "ClubId, Name COLLATE NOCASE"),
+            ("IX_Participants_Email_NoCase", "Participants", "Email COLLATE NOCASE"),
+            ("IX_AdminUsers_Email_NoCase", "AdminUsers", "Email COLLATE NOCASE")
+        };
+
+        await db.Database.OpenConnectionAsync();
+        try
+        {
+            foreach (var (indexName, tableName, columns) in indexes)
+            {
+                await using var duplicateCheck = db.Database.GetDbConnection().CreateCommand();
+                duplicateCheck.CommandText = $"SELECT EXISTS (SELECT 1 FROM {tableName} GROUP BY {columns} HAVING COUNT(*) > 1);";
+                var hasDuplicates = Convert.ToInt32(await duplicateCheck.ExecuteScalarAsync()) == 1;
+                if (hasDuplicates)
+                {
+                    _logger.LogWarning(
+                        "Skipped duplicate-protection index {IndexName} because existing duplicate rows were found in {TableName}.",
+                        indexName,
+                        tableName);
+                    continue;
+                }
+
+                await using var createIndex = db.Database.GetDbConnection().CreateCommand();
+                createIndex.CommandText = $"CREATE UNIQUE INDEX IF NOT EXISTS {indexName} ON {tableName} ({columns});";
+                await createIndex.ExecuteNonQueryAsync();
             }
         }
         finally
