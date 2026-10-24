@@ -88,16 +88,21 @@
         saving = true;
         errorMessage = null;
 
-        var result = await ClubService.RegisterAsync(club, selectedSportIds.ToList());
-        if (result.Succeeded)
+        try
         {
-            submitted = true;
+            var result = await ClubService.RegisterAsync(club, selectedSportIds.ToList());
+            if (result.Succeeded)
+            {
+                submitted = true;
+            }
+            else
+            {
+                errorMessage = result.Error;
+            }
         }
-        else
+        finally
         {
-            errorMessage = result.Error;
+            saving = false;
         }
-
-        saving = false;
     }
 }

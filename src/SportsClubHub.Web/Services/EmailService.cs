@@ -29,6 +29,7 @@ public sealed class EmailService
         var fromAddress = _configuration["Email:FromAddress"] ?? username;
         var fromName = _configuration["Email:FromName"] ?? "Sports Club Hub SA";
         var port = _configuration.GetValue<int?>("Email:Port") ?? 587;
+        var timeoutSeconds = Math.Clamp(_configuration.GetValue<int?>("Email:TimeoutSeconds") ?? 15, 5, 60);
 
         if (string.IsNullOrWhiteSpace(host) ||
             string.IsNullOrWhiteSpace(username) ||
@@ -50,9 +51,10 @@ public sealed class EmailService
         using var client = new SmtpClient(host, port)
         {
             EnableSsl = true,
-            Credentials = new NetworkCredential(username, password)
+            Credentials = new NetworkCredential(username, password),
+            Timeout = timeoutSeconds * 1000
         };
-        await client.SendMailAsync(message);
+        await client.SendMailAsync(message).WaitAsync(TimeSpan.FromSeconds(timeoutSeconds));
     }
 
     public async Task TrySendAsync(string recipient, string subject, string body, string purpose)
@@ -68,6 +70,10 @@ public sealed class EmailService
         catch (InvalidOperationException exception)
         {
             _logger.LogError(exception, "Email configuration prevented sending {Purpose} email to {Recipient}.", purpose, recipient);
+        }
+        catch (TimeoutException exception)
+        {
+            _logger.LogError(exception, "Timed out sending {Purpose} email to {Recipient}.", purpose, recipient);
         }
     }
 }

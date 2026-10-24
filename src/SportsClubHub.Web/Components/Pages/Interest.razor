@@ -149,19 +149,23 @@
 
         saving = true;
         var chosen = selectedSportIds.ToList();
-        var result = await InterestService.RegisterAsync(form, chosen);
-
-        if (result.Succeeded)
+        try
         {
-            successMessage = result.Message;
-            matchingClubs = await ClubService.FindOfferingAnyAsync(chosen);
+            var result = await InterestService.RegisterAsync(form, chosen);
+            if (result.Succeeded)
+            {
+                successMessage = result.Message;
+                matchingClubs = await ClubService.FindOfferingAnyAsync(chosen);
+            }
+            else
+            {
+                errorMessage = result.Message;
+            }
         }
-        else
+        finally
         {
-            errorMessage = result.Message;
+            saving = false;
         }
-
-        saving = false;
     }
 
     private void StartAgain()

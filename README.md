@@ -143,6 +143,7 @@ Set these environment variables on Render to enable email. A normal Gmail accoun
 Email__Enabled=true
 Email__Host=smtp.gmail.com
 Email__Port=587
+Email__TimeoutSeconds=15
 Email__Username=your-gmail-address@gmail.com
 Email__Password=your-google-app-password
 Email__FromAddress=your-gmail-address@gmail.com
