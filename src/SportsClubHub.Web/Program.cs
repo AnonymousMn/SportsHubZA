@@ -35,6 +35,7 @@ builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<VenueService>();
 builder.Services.AddScoped<ParticipantInterestService>();
 builder.Services.AddScoped<InsightsService>();
+builder.Services.AddScoped<AnnouncementService>();
 builder.Services.AddScoped<AdminAccountService>();
 builder.Services.AddScoped<DatabaseInitializer>();
 builder.Services.AddSingleton<EmailService>();

@@ -136,6 +136,7 @@ Design choices that are worth knowing:
 - Email notifications: optional Gmail SMTP acknowledgements for club and interest registrations, plus verification and rejection notifications for clubs
 - Staff accounts: administrators can create staff or administrator accounts and deactivate access; directory pages accept either role, while account management remains administrator-only
 - Staff sign-in is no longer shown in public navigation; authorised personnel use the separate sign-in route.
+- Announcements: staff can create, schedule, publish, pin, prioritise, and expire public updates from the administration portal. Drafts and expired items remain stored but are hidden publicly.
 
 ### Gmail notifications
 

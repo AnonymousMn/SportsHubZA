@@ -24,6 +24,7 @@ public class AppDbContext : DbContext
     public DbSet<Participant> Participants => Set<Participant>();
     public DbSet<SportInterest> SportInterests => Set<SportInterest>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
+    public DbSet<Announcement> Announcements => Set<Announcement>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

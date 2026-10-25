@@ -34,6 +34,7 @@ public class DatabaseInitializer
         await db.Database.EnsureCreatedAsync();
         await EnsureSportImageColumnAsync(db);
         await EnsureAdminAccountColumnsAsync(db);
+        await EnsureAnnouncementsTableAsync(db);
         await EnsureDuplicateProtectionIndexesAsync(db);
 
         if (!await db.Sports.AnyAsync())
@@ -51,6 +52,24 @@ public class DatabaseInitializer
         }
 
         await _adminAccounts.EnsureInitialAdminAsync();
+    }
+
+    private static async Task EnsureAnnouncementsTableAsync(AppDbContext db)
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS Announcements (
+                AnnouncementId INTEGER NOT NULL CONSTRAINT PK_Announcements PRIMARY KEY AUTOINCREMENT,
+                Title TEXT NOT NULL,
+                Message TEXT NOT NULL,
+                Category TEXT NOT NULL,
+                PublishAt TEXT NULL,
+                ExpiresAt TEXT NULL,
+                IsPublished INTEGER NOT NULL DEFAULT 0,
+                IsPinned INTEGER NOT NULL DEFAULT 0,
+                Priority INTEGER NOT NULL DEFAULT 0,
+                CreatedAt TEXT NOT NULL
+            );
+            """);
     }
 
     private static async Task EnsureAdminAccountColumnsAsync(AppDbContext db)

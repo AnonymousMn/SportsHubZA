@@ -1,5 +1,6 @@
 @page "/"
 @inject InsightsService InsightsService
+@inject AnnouncementService AnnouncementService
 
 <PageTitle>Sports Club Hub | Find a sport, club or venue near you</PageTitle>
 
@@ -70,13 +71,35 @@
         </div>
         <a class="btn btn-outline-light-strong" href="clubs/register">Register a club <span aria-hidden="true">↗</span></a>
     </section>
+
+    @if (announcements is not null && announcements.Count > 0)
+    {
+        <section class="section" aria-labelledby="latest-announcements">
+            <p class="eyebrow">From the community</p>
+            <h2 id="latest-announcements">Latest announcements</h2>
+            <div class="row g-3">
+                @foreach (var announcement in announcements.Take(3))
+                {
+                    <article class="col-md-4">
+                        <div class="item-card">
+                            <span class="tag">@announcement.Category</span>
+                            <h3>@announcement.Title</h3>
+                            <p class="mb-0">@announcement.Message</p>
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+    }
 </div>
 
 @code {
     private DirectoryCounts? counts;
+    private List<Announcement>? announcements;
 
     protected override async Task OnInitializedAsync()
     {
         counts = await InsightsService.GetDirectoryCountsAsync();
+        announcements = await AnnouncementService.GetPublishedAsync();
     }
 }

@@ -1,0 +1,111 @@
+@page "/admin/announcements"
+@attribute [Authorize(Roles = AppRoles.Administrator + "," + AppRoles.Staff)]
+@rendermode InteractiveNoPrerender
+@inject AnnouncementService AnnouncementService
+
+<div class="container">
+    <PageHeader Title="Manage announcements" Subtitle="Publish timely updates without changing the site code." />
+    <AdminNav />
+
+    @if (message is not null) { <div class="alert alert-success" role="status">@message</div> }
+    @if (errorMessage is not null) { <div class="alert alert-danger" role="alert">@errorMessage</div> }
+
+    <div class="row g-4">
+        <div class="col-lg-7">
+            @if (items is null)
+            {
+                <p class="muted" role="status">Loading...</p>
+            }
+            else if (items.Count == 0)
+            {
+                <div class="panel"><p class="mb-0">No announcements yet.</p></div>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data">
+                        <thead><tr><th>Announcement</th><th>Schedule</th><th>Status</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+                        <tbody>
+                            @foreach (var item in items)
+                            {
+                                <tr>
+                                    <td><strong>@item.Title</strong><br /><span class="muted">@item.Category</span></td>
+                                    <td>@(item.PublishAt?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "Now")</td>
+                                    <td>
+                                        @if (item.IsPublished) { <span class="tag">Published</span> } else { <span class="tag tag-warn">Draft</span> }
+                                    </td>
+                                    <td class="text-nowrap">
+                                        <button class="btn btn-sm btn-outline-primary" type="button" @onclick="() => Edit(item)">Edit</button>
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="() => TogglePublishedAsync(item)">@(item.IsPublished ? "Unpublish" : "Publish")</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+        <div class="col-lg-5">
+            <div class="panel">
+                <h2>@(editing.AnnouncementId == 0 ? "New announcement" : "Edit announcement")</h2>
+                <EditForm Model="editing" OnValidSubmit="SaveAsync">
+                    <DataAnnotationsValidator />
+                    <div class="mb-3"><label class="form-label" for="announcement-title">Title</label><InputText id="announcement-title" class="form-control" @bind-Value="editing.Title" /><ValidationMessage For="() => editing.Title" /></div>
+                    <div class="mb-3"><label class="form-label" for="announcement-message">Message</label><InputTextArea id="announcement-message" class="form-control" rows="5" @bind-Value="editing.Message" /><ValidationMessage For="() => editing.Message" /></div>
+                    <div class="mb-3"><label class="form-label" for="announcement-category">Category</label><InputText id="announcement-category" class="form-control" @bind-Value="editing.Category" /></div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3"><label class="form-label" for="announcement-publish">Publish at</label><InputDate id="announcement-publish" class="form-control" @bind-Value="editing.PublishAt" /></div>
+                        <div class="col-md-6 mb-3"><label class="form-label" for="announcement-expire">Expires at</label><InputDate id="announcement-expire" class="form-control" @bind-Value="editing.ExpiresAt" /></div>
+                    </div>
+                    <div class="mb-3"><label class="form-label" for="announcement-priority">Priority</label><InputNumber id="announcement-priority" class="form-control" @bind-Value="editing.Priority" /></div>
+                    <div class="form-check mb-2"><InputCheckbox id="announcement-pinned" class="form-check-input" @bind-Value="editing.IsPinned" /><label class="form-check-label" for="announcement-pinned">Pin above other announcements</label></div>
+                    <div class="form-check mb-3"><InputCheckbox id="announcement-published" class="form-check-input" @bind-Value="editing.IsPublished" /><label class="form-check-label" for="announcement-published">Published</label></div>
+                    <button class="btn btn-primary" type="submit">Save announcement</button>
+                    @if (editing.AnnouncementId != 0) { <button class="btn btn-link" type="button" @onclick="CancelEdit">Cancel</button> }
+                </EditForm>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Announcement>? items;
+    private Announcement editing = new();
+    private string? message;
+    private string? errorMessage;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+    private async Task LoadAsync() => items = await AnnouncementService.ListAsync();
+
+    private void Edit(Announcement item)
+    {
+        editing = new Announcement
+        {
+            AnnouncementId = item.AnnouncementId, Title = item.Title, Message = item.Message,
+            Category = item.Category, PublishAt = item.PublishAt, ExpiresAt = item.ExpiresAt,
+            IsPublished = item.IsPublished, IsPinned = item.IsPinned, Priority = item.Priority
+        };
+        message = null;
+        errorMessage = null;
+    }
+
+    private void CancelEdit() => editing = new Announcement();
+
+    private async Task SaveAsync()
+    {
+        var result = await AnnouncementService.SaveAsync(editing);
+        if (!result.Succeeded) { errorMessage = result.Error; return; }
+        message = editing.AnnouncementId == 0 ? "Announcement created." : "Announcement updated.";
+        errorMessage = null;
+        editing = new Announcement();
+        await LoadAsync();
+    }
+
+    private async Task TogglePublishedAsync(Announcement item)
+    {
+        var result = await AnnouncementService.SetPublishedAsync(item.AnnouncementId, !item.IsPublished);
+        message = result.Succeeded ? "Announcement status updated." : null;
+        errorMessage = result.Error;
+        await LoadAsync();
+    }
+}
