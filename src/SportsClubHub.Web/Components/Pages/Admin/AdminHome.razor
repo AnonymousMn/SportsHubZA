@@ -1,5 +1,5 @@
 @page "/admin"
-@attribute [Authorize(Roles = AppRoles.Administrator)]
+@attribute [Authorize(Roles = AppRoles.Administrator + "," + AppRoles.Staff)]
 @rendermode InteractiveNoPrerender
 @inject InsightsService InsightsService
 

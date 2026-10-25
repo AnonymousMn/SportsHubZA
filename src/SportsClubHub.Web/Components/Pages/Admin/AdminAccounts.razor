@@ -1,0 +1,158 @@
+@page "/admin/accounts"
+@attribute [Authorize(Roles = AppRoles.Administrator)]
+@rendermode InteractiveNoPrerender
+@using System.ComponentModel.DataAnnotations
+@inject AdminAccountService AccountService
+
+<div class="container">
+    <PageHeader Title="Staff accounts" Subtitle="Create and deactivate authorised directory accounts." />
+    <AdminNav />
+
+    @if (message is not null)
+    {
+        <div class="alert alert-success" role="status">@message</div>
+    }
+    @if (errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@errorMessage</div>
+    }
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="panel">
+                <h2>Create account</h2>
+                <EditForm Model="newAccount" OnValidSubmit="CreateAsync">
+                    <DataAnnotationsValidator />
+                    <div class="mb-3">
+                        <label class="form-label" for="account-email">Email address</label>
+                        <InputText id="account-email" class="form-control" type="email" @bind-Value="newAccount.Email" />
+                        <ValidationMessage For="() => newAccount.Email" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="account-password">Temporary password</label>
+                        <InputText id="account-password" class="form-control" type="password" @bind-Value="newAccount.Password" />
+                        <div class="form-text">At least 10 characters. Share it securely and rotate it when a reset workflow is added.</div>
+                        <ValidationMessage For="() => newAccount.Password" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="account-role">Role</label>
+                        <InputSelect id="account-role" class="form-select" @bind-Value="newAccount.Role">
+                            <option value="@AppRoles.Staff">Staff</option>
+                            <option value="@AppRoles.Administrator">Administrator</option>
+                        </InputSelect>
+                    </div>
+                    <button class="btn btn-primary" type="submit" disabled="@saving">@(saving ? "Creating..." : "Create account")</button>
+                </EditForm>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            @if (accounts is null)
+            {
+                <p class="muted" role="status">Loading...</p>
+            }
+            else
+            {
+                <div class="table-scroll">
+                    <table class="data">
+                        <thead><tr><th>Account</th><th>Role</th><th>Status</th><th><span class="visually-hidden">Action</span></th></tr></thead>
+                        <tbody>
+                            @foreach (var account in accounts)
+                            {
+                                <tr>
+                                    <td>@account.Email</td>
+                                    <td>@account.Role</td>
+                                    <td>@(account.IsActive ? "Active" : "Inactive")</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary" type="button" @onclick="() => ToggleAsync(account)">
+                                            @(account.IsActive ? "Deactivate" : "Activate")
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private List<AdminUser>? accounts;
+    private readonly NewAccount newAccount = new();
+    private string? message;
+    private string? errorMessage;
+    private bool saving;
+    private int currentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthenticationStateTask;
+        _ = int.TryParse(state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out currentUserId);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() => accounts = await AccountService.ListAsync();
+
+    private async Task CreateAsync()
+    {
+        saving = true;
+        message = null;
+        errorMessage = null;
+        try
+        {
+            var result = await AccountService.CreateAsync(newAccount.Email, newAccount.Password, newAccount.Role);
+            if (result.Succeeded)
+            {
+                message = $"Account for {newAccount.Email} created.";
+                newAccount.Clear();
+                await LoadAsync();
+            }
+            else
+            {
+                errorMessage = result.Error;
+            }
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private async Task ToggleAsync(AdminUser account)
+    {
+        message = null;
+        errorMessage = null;
+        var result = await AccountService.SetActiveAsync(account.AdminUserId, !account.IsActive, currentUserId);
+        if (result.Succeeded)
+        {
+            message = $"Account {account.Email} is now {(account.IsActive ? "inactive" : "active")}.";
+            await LoadAsync();
+        }
+        else
+        {
+            errorMessage = result.Error;
+        }
+    }
+
+    private sealed class NewAccount
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required, MinLength(10)]
+        public string Password { get; set; } = string.Empty;
+
+        public string Role { get; set; } = AppRoles.Staff;
+
+        public void Clear()
+        {
+            Email = string.Empty;
+            Password = string.Empty;
+            Role = AppRoles.Staff;
+        }
+    }
+}

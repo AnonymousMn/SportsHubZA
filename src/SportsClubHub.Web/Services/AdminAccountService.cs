@@ -46,7 +46,7 @@ public class AdminAccountService
         await using var db = await _factory.CreateDbContextAsync();
         var user = await db.AdminUsers.AsNoTracking().FirstOrDefaultAsync(a => a.Email == normalisedEmail);
 
-        if (user is null || string.IsNullOrEmpty(password))
+        if (user is null || !user.IsActive || string.IsNullOrEmpty(password))
         {
             _hasher.VerifyHashedPassword(new AdminUser(), _dummyHash, password ?? string.Empty);
             return null;
@@ -54,6 +54,68 @@ public class AdminAccountService
 
         var result = _hasher.VerifyHashedPassword(user, user.PasswordHash, password);
         return result == PasswordVerificationResult.Failed ? null : user;
+    }
+
+    public async Task<List<AdminUser>> ListAsync()
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        return await db.AdminUsers.AsNoTracking().OrderBy(a => a.Email).ToListAsync();
+    }
+
+    public async Task<OperationResult> CreateAsync(string? email, string? password, string role)
+    {
+        var normalisedEmail = InputNormaliser.Email(email);
+        if (normalisedEmail.Length == 0 || string.IsNullOrWhiteSpace(password))
+        {
+            return OperationResult.Fail("Email and password are required.");
+        }
+
+        if (password.Length < MinimumPasswordLength)
+        {
+            return OperationResult.Fail($"Password must be at least {MinimumPasswordLength} characters.");
+        }
+
+        if (role is not AppRoles.Administrator and not AppRoles.Staff)
+        {
+            return OperationResult.Fail("Choose a valid account role.");
+        }
+
+        await using var db = await _factory.CreateDbContextAsync();
+        if (await db.AdminUsers.AnyAsync(a => a.Email == normalisedEmail))
+        {
+            return OperationResult.Fail("An account with that email already exists.");
+        }
+
+        var user = new AdminUser { Email = normalisedEmail, Role = role, IsActive = true };
+        user.PasswordHash = _hasher.HashPassword(user, password);
+        db.AdminUsers.Add(user);
+        await db.SaveChangesAsync();
+        return OperationResult.Success();
+    }
+
+    public async Task<OperationResult> SetActiveAsync(int adminUserId, bool isActive, int currentUserId)
+    {
+        if (adminUserId == currentUserId && !isActive)
+        {
+            return OperationResult.Fail("You cannot deactivate your own account.");
+        }
+
+        await using var db = await _factory.CreateDbContextAsync();
+        var user = await db.AdminUsers.FirstOrDefaultAsync(a => a.AdminUserId == adminUserId);
+        if (user is null)
+        {
+            return OperationResult.Fail("Account not found.");
+        }
+
+        if (user.Role == AppRoles.Administrator && user.IsActive && !isActive &&
+            await db.AdminUsers.CountAsync(a => a.Role == AppRoles.Administrator && a.IsActive) <= 1)
+        {
+            return OperationResult.Fail("Keep at least one active administrator account.");
+        }
+
+        user.IsActive = isActive;
+        await db.SaveChangesAsync();
+        return OperationResult.Success();
     }
 
     /// <summary>Creates the first administrator when none exists. Safe to call on every startup.</summary>
@@ -89,7 +151,7 @@ public class AdminAccountService
             return;
         }
 
-        var admin = new AdminUser { Email = email };
+        var admin = new AdminUser { Email = email, Role = AppRoles.Administrator, IsActive = true };
         admin.PasswordHash = _hasher.HashPassword(admin, password);
         db.AdminUsers.Add(admin);
         await db.SaveChangesAsync();

@@ -66,7 +66,7 @@
         {
             new(ClaimTypes.NameIdentifier, admin.AdminUserId.ToString()),
             new(ClaimTypes.Name, admin.Email),
-            new(ClaimTypes.Role, AppRoles.Administrator)
+            new(ClaimTypes.Role, admin.Role)
         };
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 

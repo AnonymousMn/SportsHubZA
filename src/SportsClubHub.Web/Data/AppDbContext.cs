@@ -38,6 +38,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Sport>().HasIndex(s => s.Name).IsUnique();
         modelBuilder.Entity<Participant>().HasIndex(p => p.Email).IsUnique();
         modelBuilder.Entity<AdminUser>().HasIndex(a => a.Email).IsUnique();
+        modelBuilder.Entity<AdminUser>().Property(a => a.Role).HasMaxLength(30).IsRequired();
         modelBuilder.Entity<Club>().HasIndex(c => new { c.Name, c.Location }).IsUnique();
         modelBuilder.Entity<Venue>().HasIndex(v => new { v.Name, v.Location }).IsUnique();
         modelBuilder.Entity<Team>().HasIndex(t => new { t.ClubId, t.Name }).IsUnique();

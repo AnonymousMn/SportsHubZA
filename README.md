@@ -134,6 +134,8 @@ Design choices that are worth knowing:
   - Existing and duplicate venues are reported in the preview and are never silently skipped
 - Duplicate protection: new duplicate sports, clubs, venues, teams, participant emails, admin emails, and relationship rows are rejected; existing duplicate records are preserved and logged rather than deleted automatically
 - Email notifications: optional Gmail SMTP acknowledgements for club and interest registrations, plus verification and rejection notifications for clubs
+- Staff accounts: administrators can create staff or administrator accounts and deactivate access; directory pages accept either role, while account management remains administrator-only
+- Staff sign-in is no longer shown in public navigation; authorised personnel use the separate sign-in route.
 
 ### Gmail notifications
 

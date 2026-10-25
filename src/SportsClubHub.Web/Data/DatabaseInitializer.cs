@@ -33,6 +33,7 @@ public class DatabaseInitializer
 
         await db.Database.EnsureCreatedAsync();
         await EnsureSportImageColumnAsync(db);
+        await EnsureAdminAccountColumnsAsync(db);
         await EnsureDuplicateProtectionIndexesAsync(db);
 
         if (!await db.Sports.AnyAsync())
@@ -50,6 +51,40 @@ public class DatabaseInitializer
         }
 
         await _adminAccounts.EnsureInitialAdminAsync();
+    }
+
+    private static async Task EnsureAdminAccountColumnsAsync(AppDbContext db)
+    {
+        await db.Database.OpenConnectionAsync();
+        try
+        {
+            var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            await using var command = db.Database.GetDbConnection().CreateCommand();
+            command.CommandText = "PRAGMA table_info('AdminUsers');";
+            await using var reader = await command.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                columns.Add(reader.GetString(1));
+            }
+
+            if (!columns.Contains("Role"))
+            {
+                await using var alter = db.Database.GetDbConnection().CreateCommand();
+                alter.CommandText = "ALTER TABLE AdminUsers ADD COLUMN Role TEXT NOT NULL DEFAULT 'Administrator';";
+                await alter.ExecuteNonQueryAsync();
+            }
+
+            if (!columns.Contains("IsActive"))
+            {
+                await using var alter = db.Database.GetDbConnection().CreateCommand();
+                alter.CommandText = "ALTER TABLE AdminUsers ADD COLUMN IsActive INTEGER NOT NULL DEFAULT 1;";
+                await alter.ExecuteNonQueryAsync();
+            }
+        }
+        finally
+        {
+            await db.Database.CloseConnectionAsync();
+        }
     }
 
     private static async Task EnsureSportImageColumnAsync(AppDbContext db)

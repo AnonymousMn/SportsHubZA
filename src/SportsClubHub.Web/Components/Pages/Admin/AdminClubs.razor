@@ -1,5 +1,5 @@
 @page "/admin/clubs"
-@attribute [Authorize(Roles = AppRoles.Administrator)]
+@attribute [Authorize(Roles = AppRoles.Administrator + "," + AppRoles.Staff)]
 @rendermode InteractiveNoPrerender
 @inject ClubService ClubService
 

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using SportsClubHub.Domain.Common;
 
 namespace SportsClubHub.Domain.Entities;
 
@@ -12,6 +13,11 @@ public class AdminUser
 
     [Required]
     public string PasswordHash { get; set; } = string.Empty;
+
+    [Required, StringLength(30)]
+    public string Role { get; set; } = AppRoles.Staff;
+
+    public bool IsActive { get; set; } = true;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
