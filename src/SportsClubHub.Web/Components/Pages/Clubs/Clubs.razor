@@ -43,7 +43,7 @@
             {
                 <div class="col-md-6 col-lg-4">
                     <article class="item-card">
-                        <h2><a href="clubs/@club.ClubId">@club.Name</a></h2>
+                        <h2 class="card-link"><a href="clubs/@club.ClubId">@club.Name</a></h2>
                         <span class="meta">@club.Location</span>
                         <div>
                             @foreach (var clubSport in club.ClubSports.OrderBy(cs => cs.Sport.Name))
