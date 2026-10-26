@@ -1,0 +1,46 @@
+name: Feature request
+description: Propose an enhancement for SportsHubZA.
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement.
+        Do not include secrets, credentials, or personal/private data.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What user or operational problem are you trying to solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe your preferred solution.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you evaluate?
+  - type: textarea
+    id: impact
+    attributes:
+      label: Scope and impact
+      description: Note expected impact on UI, data model, security, configuration, deployment, or performance.
+    validations:
+      required: true
+  - type: dropdown
+    id: contribution
+    attributes:
+      label: Willing to contribute?
+      options:
+        - "Yes, I can help implement this."
+        - "No, I am only proposing the idea."
+    validations:
+      required: true

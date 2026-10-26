@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Restore, build, and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore SportsClubHub.sln
+
+      - name: Build solution (Release)
+        run: dotnet build SportsClubHub.sln --configuration Release --no-restore
+
+      - name: Run test suite (Release)
+        run: dotnet test SportsClubHub.sln --configuration Release --no-build --verbosity normal
