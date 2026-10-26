@@ -1,0 +1,91 @@
+@page "/admin/competitions"
+@attribute [Authorize(Roles = AppRoles.Administrator + "," + AppRoles.Staff)]
+@rendermode InteractiveNoPrerender
+@inject CompetitionService CompetitionService
+@inject SportService SportService
+@inject ClubService ClubService
+@inject VenueService VenueService
+
+<div class="container">
+    <PageHeader Title="Manage competitions" Subtitle="Publish upcoming competitions with clear dates, locations, and registration details." />
+    <AdminNav />
+    @if (message is not null) { <div class="alert alert-success" role="status">@message</div> }
+    @if (errorMessage is not null) { <div class="alert alert-danger" role="alert">@errorMessage</div> }
+    <div class="row g-4">
+        <div class="col-lg-7">
+            @if (items is null) { <p class="muted" role="status">Loading...</p> }
+            else if (items.Count == 0) { <div class="panel"><p class="mb-0">No competitions yet.</p></div> }
+            else
+            {
+                <div class="table-scroll"><table class="data">
+                    <thead><tr><th>Competition</th><th>Sport</th><th>Dates</th><th>Status</th><th></th></tr></thead>
+                    <tbody>@foreach (var item in items)
+                    {
+                        <tr>
+                            <td><strong>@item.Name</strong><br /><span class="muted">@item.Category</span></td>
+                            <td>@item.Sport.Name</td>
+                            <td>@item.StartsAt.ToLocalTime().ToString("dd MMM yyyy")</td>
+                            <td>@(item.IsPublished ? "Published" : "Draft")</td>
+                            <td class="text-nowrap"><button class="btn btn-sm btn-outline-primary" @onclick="() => Edit(item)">Edit</button> <button class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleAsync(item)">@(item.IsPublished ? "Unpublish" : "Publish")</button></td>
+                        </tr>
+                    }</tbody>
+                </table></div>
+            }
+        </div>
+        <div class="col-lg-5"><div class="panel">
+            <h2>@(editing.CompetitionId == 0 ? "New competition" : "Edit competition")</h2>
+            <EditForm Model="editing" OnValidSubmit="SaveAsync"><DataAnnotationsValidator />
+                <div class="mb-3"><label class="form-label" for="competition-name">Name</label><InputText id="competition-name" class="form-control" @bind-Value="editing.Name" /><ValidationMessage For="() => editing.Name" /></div>
+                <div class="mb-3"><label class="form-label" for="competition-description">Description</label><InputTextArea id="competition-description" class="form-control" rows="3" @bind-Value="editing.Description" /></div>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label class="form-label" for="competition-sport">Sport</label><InputSelect id="competition-sport" class="form-select" @bind-Value="editing.SportId"><option value="0">Choose sport</option>@foreach (var sport in sports) { <option value="@sport.SportId">@sport.Name</option> }</InputSelect></div>
+                    <div class="col-md-6 mb-3"><label class="form-label" for="competition-category">Category</label><InputText id="competition-category" class="form-control" @bind-Value="editing.Category" /></div>
+                </div>
+                <div class="mb-3"><label class="form-label" for="competition-club">Organising club</label><InputSelect id="competition-club" class="form-select" @bind-Value="editing.OrganisingClubId"><option value="">None listed</option>@foreach (var club in clubs) { <option value="@club.ClubId">@club.Name</option> }</InputSelect></div>
+                <div class="mb-3"><label class="form-label" for="competition-venue">Venue</label><InputSelect id="competition-venue" class="form-select" @bind-Value="editing.VenueId"><option value="">None listed</option>@foreach (var venue in venues) { <option value="@venue.VenueId">@venue.Name — @venue.Location</option> }</InputSelect></div>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label class="form-label" for="registration-open">Registration opens</label><InputDate id="registration-open" class="form-control" @bind-Value="editing.RegistrationOpensAt" /></div>
+                    <div class="col-md-6 mb-3"><label class="form-label" for="registration-close">Registration closes</label><InputDate id="registration-close" class="form-control" @bind-Value="editing.RegistrationClosesAt" /></div>
+                    <div class="col-md-6 mb-3"><label class="form-label" for="competition-start">Starts</label><InputDate id="competition-start" class="form-control" @bind-Value="editing.StartsAt" /></div>
+                    <div class="col-md-6 mb-3"><label class="form-label" for="competition-end">Ends</label><InputDate id="competition-end" class="form-control" @bind-Value="editing.EndsAt" /></div>
+                </div>
+                <div class="mb-3"><label class="form-label" for="competition-url">Registration link</label><InputText id="competition-url" class="form-control" type="url" @bind-Value="editing.RegistrationUrl" /></div>
+                <div class="mb-3"><label class="form-label" for="competition-email">Contact email</label><InputText id="competition-email" class="form-control" type="email" @bind-Value="editing.ContactEmail" /></div>
+                <div class="form-check mb-3"><InputCheckbox id="competition-published" class="form-check-input" @bind-Value="editing.IsPublished" /><label class="form-check-label" for="competition-published">Published publicly</label></div>
+                <button class="btn btn-primary" type="submit">Save competition</button>
+                @if (editing.CompetitionId != 0) { <button class="btn btn-link" type="button" @onclick="CancelEdit">Cancel</button> }
+            </EditForm>
+        </div></div>
+    </div>
+</div>
+
+@code {
+    private List<Competition>? items;
+    private List<Sport> sports = new();
+    private List<Club> clubs = new();
+    private List<Venue> venues = new();
+    private Competition editing = NewCompetition();
+    private string? message;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sports = await SportService.GetActiveAsync();
+        clubs = await ClubService.SearchAsync(null, null);
+        venues = await VenueService.SearchAsync(null, null);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() => items = await CompetitionService.ListAsync();
+    private static Competition NewCompetition() => new()
+    {
+        RegistrationOpensAt = DateTime.UtcNow.Date,
+        RegistrationClosesAt = DateTime.UtcNow.Date.AddDays(7),
+        StartsAt = DateTime.UtcNow.Date.AddDays(14),
+        EndsAt = DateTime.UtcNow.Date.AddDays(15)
+    };
+    private void Edit(Competition item) { editing = new Competition { CompetitionId = item.CompetitionId, Name = item.Name, Description = item.Description, Category = item.Category, SportId = item.SportId, OrganisingClubId = item.OrganisingClubId, VenueId = item.VenueId, RegistrationOpensAt = item.RegistrationOpensAt, RegistrationClosesAt = item.RegistrationClosesAt, StartsAt = item.StartsAt, EndsAt = item.EndsAt, RegistrationUrl = item.RegistrationUrl, ContactEmail = item.ContactEmail, ImageUrl = item.ImageUrl, IsPublished = item.IsPublished }; }
+    private void CancelEdit() => editing = NewCompetition();
+    private async Task SaveAsync() { var wasNew = editing.CompetitionId == 0; var result = await CompetitionService.SaveAsync(editing); if (!result.Succeeded) { errorMessage = result.Error; return; } message = wasNew ? "Competition created." : "Competition updated."; errorMessage = null; editing = NewCompetition(); await LoadAsync(); }
+    private async Task ToggleAsync(Competition item) { var result = await CompetitionService.SetPublishedAsync(item.CompetitionId, !item.IsPublished); message = result.Succeeded ? "Competition status updated." : null; errorMessage = result.Error; await LoadAsync(); }
+}

@@ -21,6 +21,12 @@ public class Club
     [Required, StringLength(120)]
     public string Location { get; set; } = string.Empty;
 
+    [Range(-90, 90)]
+    public double? Latitude { get; set; }
+
+    [Range(-180, 180)]
+    public double? Longitude { get; set; }
+
     /// <summary>Organisation contact details. These belong to the club, not to a private individual.</summary>
     [Required, EmailAddress, StringLength(254)]
     public string ContactEmail { get; set; } = string.Empty;

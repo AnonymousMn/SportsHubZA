@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<SportInterest> SportInterests => Set<SportInterest>();
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
+    public DbSet<Competition> Competitions => Set<Competition>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,6 +44,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Club>().HasIndex(c => new { c.Name, c.Location }).IsUnique();
         modelBuilder.Entity<Venue>().HasIndex(v => new { v.Name, v.Location }).IsUnique();
         modelBuilder.Entity<Team>().HasIndex(t => new { t.ClubId, t.Name }).IsUnique();
+        modelBuilder.Entity<Competition>().HasIndex(c => new { c.Name, c.StartsAt }).IsUnique();
 
         // --- Relationships ---
         // Deleting a club or venue removes its join rows. Sports and clubs that have teams cannot
@@ -81,5 +83,14 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Club>().Property(c => c.VerificationStatus).HasConversion<string>();
         modelBuilder.Entity<Team>().Property(t => t.CompetitionLevel).HasConversion<string>();
         modelBuilder.Entity<Venue>().Property(v => v.VenueType).HasConversion<string>();
+        modelBuilder.Entity<Competition>()
+            .HasOne(c => c.Sport).WithMany()
+            .HasForeignKey(c => c.SportId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Competition>()
+            .HasOne(c => c.OrganisingClub).WithMany()
+            .HasForeignKey(c => c.OrganisingClubId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<Competition>()
+            .HasOne(c => c.Venue).WithMany()
+            .HasForeignKey(c => c.VenueId).OnDelete(DeleteBehavior.SetNull);
     }
 }

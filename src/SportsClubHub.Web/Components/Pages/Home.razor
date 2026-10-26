@@ -1,6 +1,7 @@
 @page "/"
 @inject InsightsService InsightsService
 @inject AnnouncementService AnnouncementService
+@inject CompetitionService CompetitionService
 
 <PageTitle>Sports Club Hub | Find a sport, club or venue near you</PageTitle>
 
@@ -88,6 +89,30 @@
                         </div>
                     </article>
                 }
+
+            </div>
+        </section>
+    }
+
+    @if (competitions is not null && competitions.Count > 0)
+    {
+        <section class="section" aria-labelledby="upcoming-competitions">
+            <p class="eyebrow">On the calendar</p>
+            <h2 id="upcoming-competitions">Upcoming competitions</h2>
+            <div class="row g-3">
+                @foreach (var competition in competitions.Take(3))
+                {
+                    <article class="col-md-4"><div class="item-card">
+                        <span class="tag">@competition.Sport.Name</span>
+                        <h3>@competition.Name</h3>
+                        <p class="muted mb-1">@competition.StartsAt.ToLocalTime().ToString("dd MMM yyyy") · @competition.Venue?.Name</p>
+                        <p class="mb-0">@competition.Description</p>
+                        @if (!string.IsNullOrWhiteSpace(competition.RegistrationUrl))
+                        {
+                            <a class="btn btn-sm btn-outline-primary mt-auto" href="@competition.RegistrationUrl" target="_blank" rel="noopener">Registration details</a>
+                        }
+                    </div></article>
+                }
             </div>
         </section>
     }
@@ -96,10 +121,12 @@
 @code {
     private DirectoryCounts? counts;
     private List<Announcement>? announcements;
+    private List<Competition>? competitions;
 
     protected override async Task OnInitializedAsync()
     {
         counts = await InsightsService.GetDirectoryCountsAsync();
         announcements = await AnnouncementService.GetPublishedAsync();
+        competitions = await CompetitionService.GetUpcomingAsync();
     }
 }

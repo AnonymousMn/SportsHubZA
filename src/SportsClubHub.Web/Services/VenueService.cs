@@ -106,6 +106,8 @@ public class VenueService
 
             existing.Name = edited.Name;
             existing.Location = edited.Location;
+            existing.Latitude = edited.Latitude;
+            existing.Longitude = edited.Longitude;
             existing.Address = edited.Address;
             existing.VenueType = edited.VenueType;
             existing.SurfaceType = edited.SurfaceType;

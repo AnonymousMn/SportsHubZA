@@ -44,6 +44,19 @@
                             <InputText id="edit-club-location" class="form-control" @bind-Value="editing.Location" />
                             <ValidationMessage For="() => editing.Location" />
                         </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="edit-club-latitude">Latitude</label>
+                                <InputNumber id="edit-club-latitude" class="form-control" @bind-Value="editing.Latitude" />
+                                <ValidationMessage For="() => editing.Latitude" />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label" for="edit-club-longitude">Longitude</label>
+                                <InputNumber id="edit-club-longitude" class="form-control" @bind-Value="editing.Longitude" />
+                                <ValidationMessage For="() => editing.Longitude" />
+                            </div>
+                        </div>
+                        <p class="form-text">Optional map coordinates in decimal degrees, for example Cape Town: -33.9249, 18.4241.</p>
                         <div class="mb-3">
                             <label class="form-label" for="edit-club-description">About the club</label>
                             <InputTextArea id="edit-club-description" class="form-control" rows="3" @bind-Value="editing.Description" />
@@ -199,6 +212,8 @@
             Name = club.Name,
             Description = club.Description,
             Location = club.Location,
+            Latitude = club.Latitude,
+            Longitude = club.Longitude,
             ContactEmail = club.ContactEmail,
             ContactPhone = club.ContactPhone,
             Website = club.Website

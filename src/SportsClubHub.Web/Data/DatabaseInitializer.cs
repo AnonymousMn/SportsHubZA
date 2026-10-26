@@ -35,6 +35,8 @@ public class DatabaseInitializer
         await EnsureSportImageColumnAsync(db);
         await EnsureAdminAccountColumnsAsync(db);
         await EnsureAnnouncementsTableAsync(db);
+        await EnsureCompetitionsTableAsync(db);
+        await EnsureCoordinateColumnsAsync(db);
         await EnsureDuplicateProtectionIndexesAsync(db);
 
         if (!await db.Sports.AnyAsync())
@@ -54,6 +56,30 @@ public class DatabaseInitializer
         await _adminAccounts.EnsureInitialAdminAsync();
     }
 
+    private static async Task EnsureCompetitionsTableAsync(AppDbContext db)
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS Competitions (
+                CompetitionId INTEGER NOT NULL CONSTRAINT PK_Competitions PRIMARY KEY AUTOINCREMENT,
+                Name TEXT NOT NULL,
+                Description TEXT NOT NULL,
+                Category TEXT NOT NULL,
+                SportId INTEGER NOT NULL,
+                OrganisingClubId INTEGER NULL,
+                VenueId INTEGER NULL,
+                RegistrationOpensAt TEXT NOT NULL,
+                RegistrationClosesAt TEXT NOT NULL,
+                StartsAt TEXT NOT NULL,
+                EndsAt TEXT NOT NULL,
+                RegistrationUrl TEXT NULL,
+                ContactEmail TEXT NULL,
+                ImageUrl TEXT NULL,
+                IsPublished INTEGER NOT NULL DEFAULT 0,
+                CreatedAt TEXT NOT NULL
+            );
+            """);
+    }
+
     private static async Task EnsureAnnouncementsTableAsync(AppDbContext db)
     {
         await db.Database.ExecuteSqlRawAsync("""
@@ -70,6 +96,39 @@ public class DatabaseInitializer
                 CreatedAt TEXT NOT NULL
             );
             """);
+    }
+
+    private static async Task EnsureCoordinateColumnsAsync(AppDbContext db)
+    {
+        await EnsureColumnAsync(db, "Clubs", "Latitude", "REAL NULL");
+        await EnsureColumnAsync(db, "Clubs", "Longitude", "REAL NULL");
+        await EnsureColumnAsync(db, "Venues", "Latitude", "REAL NULL");
+        await EnsureColumnAsync(db, "Venues", "Longitude", "REAL NULL");
+    }
+
+    private static async Task EnsureColumnAsync(AppDbContext db, string table, string column, string definition)
+    {
+        await using var command = db.Database.GetDbConnection().CreateCommand();
+        command.CommandText = $"PRAGMA table_info('{table}');";
+        var exists = false;
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+                {
+                    exists = true;
+                    break;
+                }
+            }
+        }
+
+        if (!exists)
+        {
+            await using var alter = db.Database.GetDbConnection().CreateCommand();
+            alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition};";
+            await alter.ExecuteNonQueryAsync();
+        }
     }
 
     private static async Task EnsureAdminAccountColumnsAsync(AppDbContext db)
