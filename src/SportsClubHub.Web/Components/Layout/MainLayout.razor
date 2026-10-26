@@ -13,21 +13,40 @@
             <span>Sports<span class="brand-accent">SA</span></span>
         </a>
 
-        <nav class="site-nav" aria-label="Main navigation">
-            <NavLink href="sports">Discover sports</NavLink>
-            <NavLink href="clubs">Clubs</NavLink>
-            <NavLink href="venues">Venues</NavLink>
-            <NavLink href="insights">Insights</NavLink>
-        </nav>
+        <div class="desktop-navigation">
+            <nav class="site-nav" aria-label="Main navigation">
+                <NavLink href="sports">Discover sports</NavLink>
+                <NavLink href="clubs">Clubs</NavLink>
+                <NavLink href="venues">Venues</NavLink>
+                <NavLink href="insights">Insights</NavLink>
+            </nav>
 
-        <div class="site-account">
-            <AuthorizeView>
-                <Authorized>
-                    <NavLink href="admin">Admin</NavLink>
-                    <NavLink href="account/logout">Sign out</NavLink>
-                </Authorized>
-            </AuthorizeView>
+            <div class="site-account">
+                <AuthorizeView>
+                    <Authorized>
+                        <NavLink href="admin">Admin</NavLink>
+                        <NavLink href="account/logout">Sign out</NavLink>
+                    </Authorized>
+                </AuthorizeView>
+            </div>
         </div>
+
+        <details class="mobile-explore">
+            <summary><span>Explore</span><span class="explore-icon" aria-hidden="true">+</span></summary>
+            <nav class="explore-panel" aria-label="Explore">
+                <NavLink href="sports">Discover sports <span aria-hidden="true">↗</span></NavLink>
+                <NavLink href="clubs">Clubs <span aria-hidden="true">↗</span></NavLink>
+                <NavLink href="venues">Venues <span aria-hidden="true">↗</span></NavLink>
+                <NavLink href="insights">Insights <span aria-hidden="true">↗</span></NavLink>
+                <NavLink href="get-involved">Get involved <span aria-hidden="true">↗</span></NavLink>
+                <AuthorizeView>
+                    <Authorized>
+                        <NavLink href="admin">Admin <span aria-hidden="true">↗</span></NavLink>
+                        <NavLink href="account/logout">Sign out <span aria-hidden="true">↗</span></NavLink>
+                    </Authorized>
+                </AuthorizeView>
+            </nav>
+        </details>
     </div>
 </header>
 
