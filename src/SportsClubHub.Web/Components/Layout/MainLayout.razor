@@ -18,9 +18,15 @@
                 <NavLink href="sports">Discover sports</NavLink>
                 <NavLink href="clubs">Clubs</NavLink>
                 <NavLink href="venues">Venues</NavLink>
-                <NavLink href="insights">Insights</NavLink>
-                <NavLink href="competitions">Competitions</NavLink>
                 <NavLink href="nearby">Near me</NavLink>
+                <details class="nav-more">
+                    <summary>More</summary>
+                    <div class="nav-more-panel">
+                        <NavLink href="competitions">Competitions</NavLink>
+                        <NavLink href="insights">Insights</NavLink>
+                    </div>
+                </details>
+                <NavLink class="nav-cta" href="get-involved">Get involved</NavLink>
             </nav>
 
             <div class="site-account">
@@ -36,17 +42,21 @@
         <details class="mobile-explore">
             <summary><span>Explore</span><span class="explore-icon" aria-hidden="true">+</span></summary>
             <nav class="explore-panel" aria-label="Explore">
-                <NavLink href="sports">Discover sports <span aria-hidden="true">↗</span></NavLink>
-                <NavLink href="clubs">Clubs <span aria-hidden="true">↗</span></NavLink>
-                <NavLink href="venues">Venues <span aria-hidden="true">↗</span></NavLink>
-                <NavLink href="insights">Insights <span aria-hidden="true">↗</span></NavLink>
-                <NavLink href="competitions">Competitions <span aria-hidden="true">↗</span></NavLink>
-                <NavLink href="nearby">Near me <span aria-hidden="true">↗</span></NavLink>
-                <NavLink href="get-involved">Get involved <span aria-hidden="true">↗</span></NavLink>
+                <NavLink href="sports">Discover sports</NavLink>
+                <NavLink href="clubs">Clubs</NavLink>
+                <NavLink href="venues">Venues</NavLink>
+                <NavLink href="nearby">Near me</NavLink>
+                <div class="explore-group">
+                    <NavLink href="competitions">Competitions</NavLink>
+                    <NavLink href="insights">Insights</NavLink>
+                    <NavLink href="get-involved">Get involved</NavLink>
+                </div>
                 <AuthorizeView>
                     <Authorized>
-                        <NavLink href="admin">Admin <span aria-hidden="true">↗</span></NavLink>
-                        <NavLink href="account/logout">Sign out <span aria-hidden="true">↗</span></NavLink>
+                        <div class="explore-group">
+                            <NavLink href="admin">Admin</NavLink>
+                            <NavLink href="account/logout">Sign out</NavLink>
+                        </div>
                     </Authorized>
                 </AuthorizeView>
             </nav>
