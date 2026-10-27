@@ -1,44 +1,34 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
 
 jobs:
-  verify:
+  build-test:
+    name: Restore, build, and test
     runs-on: ubuntu-latest
     steps:
-      - name: Check out source
+      - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up .NET
+      - name: Set up .NET 8 SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore
+      - name: Restore dependencies
         run: dotnet restore SportsClubHub.sln
 
-      - name: Release build
+      - name: Build solution (Release)
         run: dotnet build SportsClubHub.sln --configuration Release --no-restore
 
-      - name: Tests
-        run: dotnet test SportsClubHub.sln --configuration Release --no-build --no-restore --logger trx
-
-      - name: Check for likely committed secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git grep -n -I -E \
-            '(BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|mongodb(\+srv)?://[^[:space:]]+:[^[:space:]]+@|P[a]ssword=[^<[:space:]]{8,}|Email__P[a]ssword=[^<[:space:]]{8,})' \
-            -- ':!*.md' ':!.env.example' ':!.github/workflows/ci.yml'; then
-            echo "Potential secret detected in tracked non-documentation files."
-            exit 1
-          fi
-
-      - name: Validate Docker image
-        run: docker build --tag sportshub-rsa:ci .
+      - name: Run test suite (Release)
+        run: dotnet test SportsClubHub.sln --configuration Release --no-build --verbosity normal

@@ -1,0 +1,26 @@
+# CODEOWNERS defines default and path-specific reviewers.
+# Repository settings must separately enable required Code Owner review rules.
+
+# Default ownership for all files.
+* @AnonymousMn
+
+# Authentication / authorization / account-related application code.
+/src/SportsClubHub.Web/Components/Pages/Account/** @AnonymousMn
+/src/SportsClubHub.Web/Services/AdminAccountService.cs @AnonymousMn
+/src/SportsClubHub.Web/Program.cs @AnonymousMn
+
+# Database configuration, EF Core persistence, and data initialization.
+/src/SportsClubHub.Web/Data/** @AnonymousMn
+/src/SportsClubHub.Web/appsettings*.json @AnonymousMn
+
+# GitHub Actions workflows.
+/.github/workflows/** @AnonymousMn
+
+# Deployment / infrastructure configuration (including future Render config files).
+/Dockerfile @AnonymousMn
+/render.yaml @AnonymousMn
+/.render/** @AnonymousMn
+
+# Security-sensitive services and configuration.
+/src/SportsClubHub.Web/Services/** @AnonymousMn
+/SECURITY.md @AnonymousMn

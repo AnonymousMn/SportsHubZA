@@ -1,0 +1,68 @@
+name: Bug report
+description: Report a reproducible defect in SportsHubZA.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please provide reproducible details.
+        Do not include secrets, credentials, personal data, or exploit details.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: Briefly describe the problem.
+      placeholder: A clear and concise summary of the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps, inputs, and navigation path.
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. Submit ...
+        4. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, browser (if UI), .NET SDK version, and any relevant runtime details.
+      placeholder: |
+        - OS:
+        - Browser:
+        - .NET SDK:
+        - App version/commit:
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or screenshots
+      description: Paste sanitized logs only (remove secrets/private data).
+      render: shell
+  - type: checkboxes
+    id: data_safety
+    attributes:
+      label: Data safety confirmation
+      options:
+        - label: I removed or masked secrets, credentials, and personal/private data from this report.
+          required: true
