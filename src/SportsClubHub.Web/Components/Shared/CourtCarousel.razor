@@ -1,0 +1,107 @@
+@implements IDisposable
+@inject IJSRuntime JS
+
+@if (Slides.Count > 0)
+{
+    <section class="court-carousel" aria-roledescription="carousel" aria-label="@Label"
+             tabindex="0" @onkeydown="OnKeyDown" @onmouseenter="() => hovering = true" @onmouseleave="() => hovering = false"
+             @onfocusin="() => hovering = true" @onfocusout="() => hovering = false">
+        @for (var i = 0; i < Slides.Count; i++)
+        {
+            var slide = Slides[i];
+            var isActive = i == current;
+            var image = SportImages.Resolve(slide.Sport);
+            <div class="court-slide sport-card-@slide.Sport.Category.ToString().ToLowerInvariant() @(isActive ? "active" : "")"
+                 role="group" aria-roledescription="slide" aria-label="@(i + 1) of @Slides.Count" aria-hidden="@(isActive ? "false" : "true")" inert="@(!isActive)">
+                @if (image is not null)
+                {
+                    <img class="court-slide-image" src="@image" alt="" loading="@(i == 0 ? "eager" : "lazy")" onerror="this.style.display='none'" />
+                }
+                <div class="court-slide-shade"></div>
+                <div class="court-slide-caption">
+                    <span class="court-slide-eyebrow">Court games</span>
+                    <h2>@slide.Sport.Name</h2>
+                    @if (!string.IsNullOrWhiteSpace(slide.Sport.Description))
+                    {
+                        <p>@slide.Sport.Description</p>
+                    }
+                    <div class="court-slide-actions">
+                        <button type="button" class="btn btn-gold" @onclick="() => OnSelect.InvokeAsync(slide)">Quick look</button>
+                        <a class="text-link-light" href="sports/@slide.Sport.SportId">Full details <span aria-hidden="true">&rarr;</span></a>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="court-controls">
+            <button type="button" class="court-arrow" aria-label="Previous court sport" @onclick="Previous">&lsaquo;</button>
+            <div class="court-dots" role="group" aria-label="Choose a court sport">
+                @for (var i = 0; i < Slides.Count; i++)
+                {
+                    var index = i;
+                    <button type="button" class="court-dot @(index == current ? "active" : "")" aria-label="Show @Slides[index].Sport.Name"
+                            aria-current="@(index == current ? "true" : "false")" @onclick="() => GoTo(index)"></button>
+                }
+            </div>
+            <button type="button" class="court-arrow" aria-label="Next court sport" @onclick="Next">&rsaquo;</button>
+            <button type="button" class="court-play" aria-label="@(playing ? "Pause slideshow" : "Play slideshow")" @onclick="() => playing = !playing">@(playing ? "Pause" : "Play")</button>
+        </div>
+        <p class="visually-hidden" aria-live="@(playing ? "off" : "polite")">@Slides[current].Sport.Name, @(current + 1) of @Slides.Count</p>
+    </section>
+}
+
+@code {
+    private int current;
+    private bool playing = true;
+    private bool hovering;
+    private System.Threading.Timer? timer;
+
+    [Parameter] public IReadOnlyList<SportListItem> Slides { get; set; } = Array.Empty<SportListItem>();
+    [Parameter] public EventCallback<SportListItem> OnSelect { get; set; }
+    [Parameter] public string Label { get; set; } = "Featured court sports";
+    [Parameter] public int IntervalSeconds { get; set; } = 6;
+
+    protected override void OnParametersSet()
+    {
+        if (current >= Slides.Count)
+        {
+            current = 0;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        // Respect "reduce motion": start paused. Moving content must also have a visible pause button (it does).
+        try { playing = !await JS.InvokeAsync<bool>("sportsClubHub.prefersReducedMotion"); }
+        catch (JSException) { /* keep autoplay */ }
+
+        timer = new System.Threading.Timer(_ => InvokeAsync(Tick), null, TimeSpan.FromSeconds(IntervalSeconds), TimeSpan.FromSeconds(IntervalSeconds));
+        StateHasChanged();
+    }
+
+    private void Tick()
+    {
+        if (playing && !hovering && Slides.Count > 1)
+        {
+            current = (current + 1) % Slides.Count;
+            StateHasChanged();
+        }
+    }
+
+    private void Next() => current = (current + 1) % Slides.Count;
+    private void Previous() => current = (current - 1 + Slides.Count) % Slides.Count;
+    private void GoTo(int index) => current = index;
+
+    private void OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "ArrowRight") { Next(); }
+        else if (e.Key == "ArrowLeft") { Previous(); }
+    }
+
+    public void Dispose() => timer?.Dispose();
+}

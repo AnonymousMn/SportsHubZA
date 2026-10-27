@@ -1,5 +1,8 @@
 // Small helper so interactive pages can set the browser tab title.
 window.sportsClubHub = {
+    prefersReducedMotion: function () {
+        return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    },
     focusById: function (id) {
         var element = document.getElementById(id);
         if (element) { element.focus(); }
