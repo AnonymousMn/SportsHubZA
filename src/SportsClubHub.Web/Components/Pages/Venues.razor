@@ -1,15 +1,36 @@
 @page "/venues"
 @rendermode InteractiveNoPrerender
+@inject IJSRuntime JS
 @inject VenueService VenueService
 @inject SportService SportService
 
 <div class="container">
     <PageHeader Title="Venues" Subtitle="Fields, courts, halls and pools where sport is played, and which sports each one supports." />
 
+    <section class="panel mb-4" aria-labelledby="venue-discovery-heading">
+        <h2 id="venue-discovery-heading">Find venues near you</h2>
+        <p>Use your location to find up to 20 mapped venues within 50 km, or choose an area manually. Your coordinates are sent to this app to calculate distances and are not saved.</p>
+        <div class="d-flex flex-wrap gap-2">
+            <button class="btn btn-primary" type="button" @onclick="FindNearbyAsync" disabled="@isLocating">
+                @(isLocating ? "Finding your location..." : "Use my location")
+            </button>
+            <button class="btn btn-outline-primary" type="button" @onclick="ChooseArea" disabled="@isLocating">Choose an area manually</button>
+        </div>
+    </section>
+
+    @if (locationError is not null)
+    {
+        <p class="alert alert-warning" role="alert">@locationError</p>
+    }
+
+    @if (manualArea || browserLocation is not null)
+    {
     <div class="filter-bar">
+        @if (manualArea)
+        {
         <div>
             <label class="form-label" for="venue-location">Location</label>
-            <input id="venue-location" class="form-control" type="search" list="venue-location-options" placeholder="For example: Johannesburg"
+            <input id="venue-location" class="form-control" type="search" disabled="@isLocating" list="venue-location-options" placeholder="For example: Johannesburg"
                    @bind="location" @bind:event="oninput" @bind:after="LoadAsync" />
             <datalist id="venue-location-options">
                 @foreach (var known in knownLocations)
@@ -18,9 +39,10 @@
                 }
             </datalist>
         </div>
+        }
         <div>
             <label class="form-label" for="venue-sport">Sport</label>
-            <select id="venue-sport" class="form-select" @bind="sportText" @bind:after="LoadAsync">
+            <select id="venue-sport" class="form-select" @bind="sportText" @bind:after="LoadAsync" disabled="@isLocating">
                 <option value="">All sports</option>
                 @foreach (var sport in sports)
                 {
@@ -30,22 +52,32 @@
         </div>
     </div>
 
-    @if (venues is null)
+    }
+
+    @if (isLocating || isLoading)
     {
         <p class="muted" role="status">Loading venues...</p>
     }
+    else if (venues is null)
+    {
+        <p class="muted" role="status">@(manualArea ? "Enter an area to find venues." : "Choose how you would like to find venues.")</p>
+    }
     else if (venues.Count == 0)
     {
-        <div class="panel"><p class="mb-0">No venues match your search. Try another location or sport.</p></div>
+        <div class="panel"><p class="mb-0">@(browserLocation is not null ? "No mapped venues within 50 km match your search. Try another sport or choose an area manually." : "No venues match your search. Try another location or sport.")</p></div>
     }
     else
     {
-        <p class="muted" role="status">@venues.Count @(venues.Count == 1 ? "venue" : "venues") found</p>
+        <p class="muted" role="status">@venues.Count @(venues.Count == 1 ? "venue" : "venues") found@(browserLocation is not null ? " within 50 km, closest first" : "")</p>
         <div class="row g-3">
             @foreach (var venue in venues)
             {
                 <div class="col-md-6 col-lg-4">
                     <article class="item-card">
+                        @if (distances.TryGetValue(venue.VenueId, out var distance))
+                        {
+                            <span class="meta">@distance.ToString("0.0") km away</span>
+                        }
                         <h2 class="card-heading">@venue.Name</h2>
                         <span class="meta">@venue.Location</span>
                         @if (!string.IsNullOrWhiteSpace(venue.Address))
@@ -77,28 +109,90 @@
 </div>
 
 @code {
+    public sealed record BrowserLocation(double Latitude, double Longitude);
     private string location = string.Empty;
     private string sportText = string.Empty;
     private List<Sport> sports = new();
     private List<string> knownLocations = new();
     private List<Venue>? venues;
+    private Dictionary<int, double> distances = new();
+    private BrowserLocation? browserLocation;
+    private bool manualArea;
+    private bool isLocating;
+    private bool isLoading;
+    private string? locationError;
     private int requestNumber;
 
     protected override async Task OnInitializedAsync()
     {
         sports = await SportService.GetActiveAsync();
-        knownLocations = await VenueService.GetKnownLocationsAsync();
+    }
+
+    private async Task ChooseArea()
+    {
+        ++requestNumber;
+        manualArea = true;
+        browserLocation = null;
+        locationError = null;
+        venues = null;
+        distances.Clear();
+        isLoading = false;
+        knownLocations = await VenueService.GetPublicLocationsAsync();
         await LoadAsync();
+    }
+
+    private async Task FindNearbyAsync()
+    {
+        ++requestNumber;
+        isLocating = true;
+        isLoading = false;
+        locationError = null;
+        venues = null;
+        distances.Clear();
+        try
+        {
+            browserLocation = await JS.InvokeAsync<BrowserLocation>("sportsClubHub.getCurrentPosition");
+            manualArea = false;
+            await LoadAsync();
+        }
+        catch (JSException)
+        {
+            browserLocation = null;
+            locationError = "Location access was declined or unavailable. Choose an area manually, or try again.";
+        }
+        finally
+        {
+            isLocating = false;
+        }
     }
 
     private async Task LoadAsync()
     {
         var thisRequest = ++requestNumber;
-        int? sportId = int.TryParse(sportText, out var parsed) ? parsed : null;
-        var result = await VenueService.SearchAsync(location, sportId);
-        if (thisRequest == requestNumber)
+        if (browserLocation is null && (!manualArea || string.IsNullOrWhiteSpace(location)))
         {
-            venues = result;
+            venues = null;
+            isLoading = false;
+            return;
+        }
+
+        isLoading = true;
+        try
+        {
+            int? sportId = int.TryParse(sportText, out var parsed) ? parsed : null;
+            var nearby = browserLocation is null ? null :
+                await VenueService.FindNearestAsync(browserLocation.Latitude, browserLocation.Longitude, sportId);
+            var result = nearby is null ? await VenueService.SearchAsync(location, sportId) : nearby.Select(v => v.Venue).ToList();
+            if (thisRequest == requestNumber)
+            {
+                venues = result;
+                distances = nearby?.ToDictionary(v => v.Venue.VenueId, v => v.DistanceKm) ?? new();
+            }
+        }
+        finally
+        {
+            if (thisRequest == requestNumber)
+                isLoading = false;
         }
     }
 }
