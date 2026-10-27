@@ -108,28 +108,66 @@ public class DatabaseInitializer
 
     private static async Task EnsureColumnAsync(AppDbContext db, string table, string column, string definition)
     {
-        await using var command = db.Database.GetDbConnection().CreateCommand();
-        command.CommandText = $"PRAGMA table_info('{table}');";
-        var exists = false;
-        await using (var reader = await command.ExecuteReaderAsync())
+        if (!IsSafeSqliteIdentifier(table))
         {
-            while (await reader.ReadAsync())
-            {
-                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
-                {
-                    exists = true;
-                    break;
-                }
-            }
+            throw new ArgumentException("The table name is not a valid SQLite identifier.", nameof(table));
         }
 
-        if (!exists)
+        if (!IsSafeSqliteIdentifier(column))
         {
-            await using var alter = db.Database.GetDbConnection().CreateCommand();
-            alter.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition};";
-            await alter.ExecuteNonQueryAsync();
+            throw new ArgumentException("The column name is not a valid SQLite identifier.", nameof(column));
+        }
+
+        if (!string.Equals(definition, "REAL NULL", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("The column definition is not supported.", nameof(definition));
+        }
+
+        var connection = db.Database.GetDbConnection();
+        var openedHere = connection.State != System.Data.ConnectionState.Open;
+
+        if (openedHere)
+        {
+            await db.Database.OpenConnectionAsync();
+        }
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA table_info(\"{table}\");";
+            var exists = false;
+            await using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+                    {
+                        exists = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!exists)
+            {
+                await using var alter = connection.CreateCommand();
+                alter.CommandText = $"ALTER TABLE \"{table}\" ADD COLUMN \"{column}\" {definition};";
+                await alter.ExecuteNonQueryAsync();
+            }
+        }
+        finally
+        {
+            if (openedHere)
+            {
+                await db.Database.CloseConnectionAsync();
+            }
         }
     }
+
+    private static bool IsSafeSqliteIdentifier(string value) =>
+        !string.IsNullOrEmpty(value) &&
+        (char.IsAsciiLetter(value[0]) || value[0] == '_') &&
+        value.Skip(1).All(character => char.IsAsciiLetterOrDigit(character) || character == '_');
 
     private static async Task EnsureAdminAccountColumnsAsync(AppDbContext db)
     {
