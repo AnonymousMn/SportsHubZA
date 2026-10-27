@@ -139,6 +139,19 @@
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
+                            <label class="form-label" for="venue-latitude">Latitude</label>
+                            <InputNumber id="venue-latitude" class="form-control" @bind-Value="editing.Latitude" />
+                            <ValidationMessage For="() => editing.Latitude" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label" for="venue-longitude">Longitude</label>
+                            <InputNumber id="venue-longitude" class="form-control" @bind-Value="editing.Longitude" />
+                            <ValidationMessage For="() => editing.Longitude" />
+                        </div>
+                    </div>
+                    <p class="form-text">Optional decimal-degree coordinates used by nearby discovery.</p>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
                             <label class="form-label" for="venue-surface">Surface</label>
                             <InputText id="venue-surface" class="form-control" @bind-Value="editing.SurfaceType" />
                             <ValidationMessage For="() => editing.SurfaceType" />
@@ -189,6 +202,8 @@
             VenueId = venue.VenueId,
             Name = venue.Name,
             Location = venue.Location,
+            Latitude = venue.Latitude,
+            Longitude = venue.Longitude,
             Address = venue.Address,
             VenueType = venue.VenueType,
             SurfaceType = venue.SurfaceType,

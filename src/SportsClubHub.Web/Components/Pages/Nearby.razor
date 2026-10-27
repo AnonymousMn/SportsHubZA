@@ -1,0 +1,147 @@
+@page "/nearby"
+@rendermode InteractiveNoPrerender
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@inject ClubService ClubService
+@inject SportService SportService
+
+<PageTitle>Clubs near you | Sports Club Hub</PageTitle>
+
+<div class="container">
+    <section class="page-intro">
+        <p class="eyebrow">Play closer</p>
+        <h1>Find clubs near you</h1>
+        <p>Share your approximate location to see verified clubs with mapped coordinates, ordered by distance.</p>
+    </section>
+
+    <div class="panel nearby-controls">
+        <div>
+            <label class="form-label" for="nearby-sport">Sport</label>
+            <select id="nearby-sport" class="form-select" @bind="sportText">
+                <option value="">All sports</option>
+                @foreach (var sport in sports)
+                {
+                    <option value="@sport.SportId">@sport.Name</option>
+                }
+            </select>
+        </div>
+        <button class="btn btn-primary align-self-end" type="button" @onclick="FindNearbyAsync" disabled="@isLoading">
+            @(isLoading ? "Finding clubs..." : "Use my location")
+        </button>
+    </div>
+
+    @if (errorMessage is not null)
+    {
+        <div class="alert alert-warning" role="alert">@errorMessage</div>
+    }
+    else if (nearby is null)
+    {
+        <div class="panel empty-state">
+            <h2>Ready when you are</h2>
+            <p class="mb-0">Your location is used only in your browser to calculate distances. It is not saved by Sports Club Hub.</p>
+        </div>
+    }
+    else if (nearby.Count == 0)
+    {
+        <div class="panel empty-state">
+            <h2>No mapped clubs found</h2>
+            <p class="mb-0">Try another sport, or check back as more clubs add their map coordinates.</p>
+        </div>
+    }
+    else
+    {
+        <p class="muted" role="status">@nearby.Count @(nearby.Count == 1 ? "club" : "clubs") found near your location.</p>
+        <section class="nearby-map panel" aria-labelledby="nearby-map-heading">
+            <div class="nearby-map-heading">
+                <div>
+                    <p class="eyebrow mb-1">Map view</p>
+                    <h2 id="nearby-map-heading">Your closest mapped clubs</h2>
+                </div>
+                <p class="muted mb-0">Map data © OpenStreetMap contributors</p>
+            </div>
+            <iframe title="Map showing the closest mapped clubs"
+                    src="@MapUrl()"
+                    loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </section>
+        <div class="row g-4">
+            @foreach (var result in nearby)
+            {
+                var club = result.Club;
+                <article class="col-md-6 col-lg-4">
+                    <div class="item-card h-100">
+                        <span class="tag">@result.DistanceKm.ToString("0.0") km away</span>
+                        <h2><a href="clubs/@club.ClubId">@club.Name</a></h2>
+                        <p class="meta">@club.Location</p>
+                        <div class="mb-3">
+                            @foreach (var clubSport in club.ClubSports.OrderBy(cs => cs.Sport.Name))
+                            {
+                                <span class="tag">@clubSport.Sport.Name</span>
+                            }
+                        </div>
+                        <a class="btn btn-outline-primary mt-auto" target="_blank" rel="noopener"
+                           href="@OpenStreetMapUrl(club.Latitude!.Value, club.Longitude!.Value)">Open map <span aria-hidden="true">↗</span></a>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private sealed record BrowserLocation(double Latitude, double Longitude);
+
+    private List<Sport> sports = new();
+    private List<NearbyClub>? nearby;
+    private string sportText = string.Empty;
+    private string? errorMessage;
+    private bool isLoading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sports = await SportService.GetActiveAsync();
+    }
+
+    private async Task FindNearbyAsync()
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            var location = await JS.InvokeAsync<BrowserLocation>("sportsClubHub.getCurrentPosition");
+            int? sportId = int.TryParse(sportText, out var parsed) ? parsed : null;
+            nearby = await ClubService.FindNearestAsync(location.Latitude, location.Longitude, sportId);
+        }
+        catch (JSException exception)
+        {
+            errorMessage = exception.Message;
+            nearby = null;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private static string OpenStreetMapUrl(double latitude, double longitude) =>
+        $"https://www.openstreetmap.org/?mlat={latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}&mlon={longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}#map=15/{latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}/{longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+
+    private string MapUrl()
+    {
+        var first = nearby![0].Club;
+        var latitude = first.Latitude!.Value;
+        var longitude = first.Longitude!.Value;
+        var latitudeText = latitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var longitudeText = longitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var padding = 0.06;
+        var bbox = string.Join(",", new[]
+        {
+            (longitude - padding).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            (latitude - padding).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            (longitude + padding).ToString(System.Globalization.CultureInfo.InvariantCulture),
+            (latitude + padding).ToString(System.Globalization.CultureInfo.InvariantCulture)
+        });
+
+        return $"https://www.openstreetmap.org/export/embed.html?bbox={bbox}&layer=mapnik&marker={latitudeText}%2C{longitudeText}";
+    }
+}

@@ -87,6 +87,7 @@ MongoDB data-layer migration; it must not replace `ConnectionStrings__DefaultCon
 | `Participant` | A resident who registered interest. Holds only name, e-mail, area, optional phone, and consent time. Never listed publicly. |
 | `SportInterest` | "This participant is interested in this sport". Key = (ParticipantId, SportId), so duplicates are impossible. |
 | `AdminUser` | A staff account (password hash only). |
+| `Competition` | A scheduled, optionally published event linked to an active sport, verified club and active venue. |
 
 **Interest, application and membership are different things.** `SportInterest` is only interest. It is not an application and not a
 membership. Membership should be a separate `ClubMembership` entity with its own status when it is needed. The
@@ -137,6 +138,8 @@ Design choices that are worth knowing:
 - Staff accounts: administrators can create staff or administrator accounts and deactivate access; directory pages accept either role, while account management remains administrator-only
 - Staff sign-in is no longer shown in public navigation; authorised personnel use the separate sign-in route.
 - Announcements: staff can create, schedule, publish, pin, prioritise, and expire public updates from the administration portal. Drafts and expired items remain stored but are hidden publicly.
+- Competitions: staff can create and publish upcoming events at `/admin/competitions`; the public `/competitions` page and homepage preview show only published events that have not ended.
+- Nearby discovery: staff can optionally add decimal latitude and longitude to clubs and venues. The public `/nearby` page uses browser geolocation locally to order mapped, verified clubs by distance and links out to OpenStreetMap; the user's location is not stored.
 
 ### Gmail notifications
 
@@ -175,27 +178,31 @@ notice, appoint an Information Officer, define retention and deletion procedures
 - Schema creation uses `EnsureCreated`, not migrations (instructions above)
 - No e-mail verification: someone could register interest using another person's address. No CAPTCHA or rate limiting on public forms or sign in; no account lockout
 - Admin authorisation is enforced on pages. Services are not individually guarded, so any new page that uses them must carry `[Authorize]`
-- Only one role (`Administrator`). A read-only municipal role (aggregate data only) is the intended next step
+- Staff and administrator roles are available; account management remains administrator-only.
 - No way yet to export or erase a participant on request (the database is set up to cascade deletes when that is built)
 - Location is free text with suggestions, so spelling differences can split a location in the statistics
 - Club registration is unauthenticated (protected only by the Pending → Verified step)
 
 ## Verification status
 
-Written in a sandbox where NuGet could not be reached, so **EF Core packages could not be restored**. What was and was not verified:
+The repository now has shared agent guidance in `AGENTS.md`, architecture and release
+documentation under `docs/`, reusable workspace skills under `.github/skills/`, and a CI
+workflow at `.github/workflows/ci.yml`. The current source was verified locally with the
+real EF Core packages:
 
 | Check | Result |
 |---|---|
-| Domain project builds | Verified (real build) |
-| Entire web project (C#, all Razor pages, services) compiles | Verified **against a hand-written stub of the EF Core API**, not against real EF Core. This catches type, syntax and Razor errors, but not mistakes only real EF Core would find |
-| Validation and normalisation rules (consent boxes, blank optional fields, bad e-mail/URL/phone/capacity) | Verified by running them (11 checks, all passed) |
-| `dotnet restore` with real packages | **Not run** |
-| EF Core model, relationships, SQL translation of queries, database creation, seeding | **Not run** |
-| The xunit tests in `tests/` | **Written, not compiled, not run** |
-| Running the site: sign in, forms, filters, admin pages | **Not run** (no browser, no database) |
+| `dotnet restore SportsClubHub.sln` | Passed |
+| `dotnet build SportsClubHub.sln --configuration Release` | Passed, 0 warnings and 0 errors |
+| `dotnet test SportsClubHub.sln --configuration Release` | Passed, 40 tests |
+| File-backed SQLite registration reload regression | Passed |
+| Local likely-secret pattern check | Passed; `.env.example` placeholders are excluded |
+| Docker image build | Not run; Docker is not installed in the current environment |
+| Running the site and production Render smoke test | Not run |
+| Render database durability | Unverified and remains a release blocker |
 
-Please run `dotnet restore && dotnet build && dotnet test` first and report any errors. The most likely failures are small EF Core query translation issues or test setup
-issues, since those are exactly what could not be exercised here.
+The application still requires a verified persistent Render disk or approved external
+database before production registrations can be considered durable.
 
 ## Changes to an existing project
 

@@ -5,6 +5,8 @@ using SportsClubHub.Web.Data;
 
 namespace SportsClubHub.Web.Services;
 
+public record NearbyClub(Club Club, double DistanceKm);
+
 public class ClubService
 {
     private readonly IDbContextFactory<AppDbContext> _factory;
@@ -166,6 +168,8 @@ public class ClubService
         club.Name = edited.Name;
         club.Description = edited.Description;
         club.Location = edited.Location;
+        club.Latitude = edited.Latitude;
+        club.Longitude = edited.Longitude;
         club.ContactEmail = edited.ContactEmail;
         club.ContactPhone = edited.ContactPhone;
         club.Website = edited.Website;
@@ -186,6 +190,42 @@ public class ClubService
         await db.SaveChangesAsync();
         return OperationResult.Success();
     }
+
+    public async Task<List<NearbyClub>> FindNearestAsync(double latitude, double longitude, int? sportId = null, int limit = 20)
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        var query = db.Clubs.AsNoTracking()
+            .Where(c => c.IsActive && c.VerificationStatus == VerificationStatus.Verified &&
+                        c.Latitude != null && c.Longitude != null);
+
+        if (sportId is not null)
+        {
+            query = query.Where(c => c.ClubSports.Any(cs => cs.SportId == sportId));
+        }
+
+        var clubs = await query
+            .Include(c => c.ClubSports).ThenInclude(cs => cs.Sport)
+            .ToListAsync();
+
+        return clubs
+            .Select(c => new NearbyClub(c, DistanceKm(latitude, longitude, c.Latitude!.Value, c.Longitude!.Value)))
+            .OrderBy(c => c.DistanceKm)
+            .Take(Math.Clamp(limit, 1, 100))
+            .ToList();
+    }
+
+    private static double DistanceKm(double latitude1, double longitude1, double latitude2, double longitude2)
+    {
+        const double earthRadiusKm = 6371;
+        var latitudeDelta = DegreesToRadians(latitude2 - latitude1);
+        var longitudeDelta = DegreesToRadians(longitude2 - longitude1);
+        var a = Math.Pow(Math.Sin(latitudeDelta / 2), 2) +
+                Math.Cos(DegreesToRadians(latitude1)) * Math.Cos(DegreesToRadians(latitude2)) *
+                Math.Pow(Math.Sin(longitudeDelta / 2), 2);
+        return earthRadiusKm * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+    }
+
+    private static double DegreesToRadians(double degrees) => degrees * Math.PI / 180;
 
     public async Task<OperationResult> SetVerificationAsync(int clubId, VerificationStatus status)
     {

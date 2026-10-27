@@ -6,6 +6,8 @@ using SportsClubHub.Web.Data;
 
 namespace SportsClubHub.Web.Services;
 
+public record NearbyVenue(Venue Venue, double DistanceKm);
+
 public record VenueImportRow(
     int RowNumber,
     string SourceFile,
@@ -44,6 +46,40 @@ public class VenueService
             .Include(v => v.VenueSports).ThenInclude(vs => vs.Sport)
             .OrderBy(v => v.Name)
             .ToListAsync();
+    }
+
+    public async Task<List<NearbyVenue>> FindNearestAsync(double latitude, double longitude, int? sportId = null)
+    {
+        if (!double.IsFinite(latitude) || latitude < -90 || latitude > 90)
+            throw new ArgumentOutOfRangeException(nameof(latitude));
+        if (!double.IsFinite(longitude) || longitude < -180 || longitude > 180)
+            throw new ArgumentOutOfRangeException(nameof(longitude));
+
+        var venues = await SearchAsync(null, sportId);
+        return venues
+            .Where(v => v.Latitude is >= -90 and <= 90 && v.Longitude is >= -180 and <= 180)
+            .Select(v => new NearbyVenue(v, DistanceKm(latitude, longitude, v.Latitude!.Value, v.Longitude!.Value)))
+            .Where(v => v.DistanceKm <= 50)
+            .OrderBy(v => v.DistanceKm)
+            .ThenBy(v => v.Venue.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(v => v.Venue.VenueId)
+            .Take(20)
+            .ToList();
+    }
+
+    private static double DistanceKm(double latitude1, double longitude1, double latitude2, double longitude2)
+    {
+        const double radians = Math.PI / 180;
+        var a = Math.Pow(Math.Sin((latitude2 - latitude1) * radians / 2), 2) +
+                Math.Cos(latitude1 * radians) * Math.Cos(latitude2 * radians) *
+                Math.Pow(Math.Sin((longitude2 - longitude1) * radians / 2), 2);
+        return 6371 * 2 * Math.Asin(Math.Sqrt(Math.Clamp(a, 0, 1)));
+    }
+    public async Task<List<string>> GetPublicLocationsAsync()
+    {
+        await using var db = await _factory.CreateDbContextAsync();
+        return await db.Venues.AsNoTracking().Where(v => v.IsActive)
+            .Select(v => v.Location).Distinct().OrderBy(v => v).ToListAsync();
     }
 
     public async Task<Venue?> GetAsync(int id)
@@ -106,6 +142,8 @@ public class VenueService
 
             existing.Name = edited.Name;
             existing.Location = edited.Location;
+            existing.Latitude = edited.Latitude;
+            existing.Longitude = edited.Longitude;
             existing.Address = edited.Address;
             existing.VenueType = edited.VenueType;
             existing.SurfaceType = edited.SurfaceType;

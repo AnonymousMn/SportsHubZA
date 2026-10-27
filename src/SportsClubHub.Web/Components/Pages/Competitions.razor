@@ -1,0 +1,65 @@
+@page "/competitions"
+@inject CompetitionService CompetitionService
+
+<PageTitle>Competitions | Sports Club Hub</PageTitle>
+
+<div class="container">
+    <section class="page-intro">
+        <p class="eyebrow">On the calendar</p>
+        <h1>Upcoming competitions</h1>
+        <p>Find organised opportunities to compete, connect, and keep moving locally.</p>
+    </section>
+
+    @if (competitions is null)
+    {
+        <p class="muted" role="status">Loading competitions...</p>
+    }
+    else if (competitions.Count == 0)
+    {
+        <div class="panel empty-state">
+            <h2>No competitions listed yet</h2>
+            <p>Check back soon for verified events in your community.</p>
+        </div>
+    }
+    else
+    {
+        <div class="row g-4">
+            @foreach (var competition in competitions)
+            {
+                <article class="col-md-6 col-lg-4">
+                    <div class="item-card h-100">
+                        <span class="tag">@competition.Sport.Name</span>
+                        <h2>@competition.Name</h2>
+                        <p class="muted">@competition.Category · @competition.StartsAt.ToLocalTime().ToString("dd MMM yyyy")</p>
+                        <p>@competition.Description</p>
+                        @if (competition.Venue is not null)
+                        {
+                            <p class="mb-1"><strong>Venue:</strong> @competition.Venue.Name, @competition.Venue.Location</p>
+                        }
+                        @if (competition.OrganisingClub is not null)
+                        {
+                            <p class="mb-3"><strong>Organiser:</strong> @competition.OrganisingClub.Name</p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(competition.RegistrationUrl))
+                        {
+                            <a class="btn btn-primary mt-auto" href="@competition.RegistrationUrl" target="_blank" rel="noopener">Register or learn more <span aria-hidden="true">↗</span></a>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(competition.ContactEmail))
+                        {
+                            <a class="btn btn-outline-primary mt-auto" href="mailto:@competition.ContactEmail">Contact organiser</a>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<Competition>? competitions;
+
+    protected override async Task OnInitializedAsync()
+    {
+        competitions = await CompetitionService.GetUpcomingAsync();
+    }
+}
