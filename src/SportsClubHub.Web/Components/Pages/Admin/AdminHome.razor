@@ -2,80 +2,218 @@
 @attribute [Authorize(Roles = AppRoles.Administrator + "," + AppRoles.Staff)]
 @rendermode InteractiveNoPrerender
 @inject InsightsService InsightsService
+@inject AdminDashboardService DashboardService
+@inject IJSRuntime JS
+
+<PageTitle>Dashboard | Sports Club Hub admin</PageTitle>
 
 <div class="container">
-    <PageHeader Title="Administration" Subtitle="Manage the directory and review aggregate interest statistics." />
-    <AdminNav />
+    <PageHeader Title="Dashboard" Subtitle="What needs attention, how interest is moving, and where the directory can be improved." />
 
-    @if (insights is null)
+    @if (insights is null || dashboard is null)
     {
         <p class="muted" role="status">Loading...</p>
     }
     else
     {
-        @if (insights.PendingClubCount > 0)
-        {
-            <p class="notice">
-                @insights.PendingClubCount @(insights.PendingClubCount == 1 ? "club is" : "clubs are") waiting for verification.
-                <a href="admin/clubs">Review clubs</a>
-            </p>
-        }
-
-        <div class="figures mb-4">
-            <div><div class="figure-number">@insights.VerifiedClubCount</div><div class="figure-label">verified clubs</div></div>
-            <div><div class="figure-number">@insights.ActiveSportCount</div><div class="figure-label">active sports</div></div>
-            <div><div class="figure-number">@insights.ActiveVenueCount</div><div class="figure-label">active venues</div></div>
-            <div><div class="figure-number">@insights.ParticipantCount</div><div class="figure-label">people registered interest</div></div>
-            <div><div class="figure-number">@insights.InterestRegistrationCount</div><div class="figure-label">interest registrations</div></div>
+        <div class="admin-quick-actions" aria-label="Quick actions">
+            <a class="btn btn-sm btn-outline-primary" href="admin/sports">Manage sports</a>
+            <a class="btn btn-sm btn-outline-primary" href="admin/venues">Manage venues</a>
+            <a class="btn btn-sm btn-outline-primary" href="admin/announcements">Post an announcement</a>
+            <a class="btn btn-sm btn-outline-primary" href="admin/competitions">Add a competition</a>
         </div>
 
-        <h2>Interest by sport</h2>
-        <p class="muted">
-            Interest registrations are not confirmed participants or members. Individual participant records are
-            deliberately not shown in this application.
-        </p>
-
-        @if (insights.AllSports.Count == 0)
-        {
-            <p>No active sports. <a href="admin/sports">Add a sport</a>.</p>
-        }
-        else
-        {
-            <div class="table-scroll">
-                <table class="data">
-                    <thead><tr><th scope="col">Sport</th><th scope="col">Interest registrations</th><th scope="col">Verified clubs</th></tr></thead>
-                    <tbody>
-                        @foreach (var sport in insights.AllSports)
-                        {
-                            <tr><td>@sport.SportName</td><td>@sport.InterestCount</td><td>@sport.ClubCount</td></tr>
-                        }
-                    </tbody>
-                </table>
+        <div class="kpi-grid">
+            <div class="kpi"><div class="kpi-number">@insights.VerifiedClubCount</div><div class="kpi-label">verified clubs</div></div>
+            <div class="kpi"><div class="kpi-number">@insights.ActiveSportCount</div><div class="kpi-label">active sports</div></div>
+            <div class="kpi"><div class="kpi-number">@insights.ActiveVenueCount</div><div class="kpi-label">active venues</div></div>
+            <div class="kpi"><div class="kpi-number">@insights.ParticipantCount</div><div class="kpi-label">people registered interest</div></div>
+            <div class="kpi">
+                <div class="kpi-number">@insights.InterestRegistrationCount</div>
+                <div class="kpi-label">interest registrations</div>
+                <div class="kpi-delta">@ChangeText()</div>
             </div>
-        }
+        </div>
 
-        <h2 class="mt-4">People who registered interest, by location</h2>
-        @if (insights.ParticipantsByLocation.Count == 0)
-        {
-            <p class="muted">No location has at least @CommunityInsights.MinimumGroupSize people yet. Smaller groups are hidden to protect privacy.</p>
-        }
-        else
-        {
-            <ul class="list-unstyled col-md-6">
-                @foreach (var location in insights.ParticipantsByLocation)
+        <div class="admin-grid">
+            <section class="panel" aria-labelledby="attention-heading">
+                <h2 id="attention-heading">Needs attention <span class="chip-count">@dashboard.NeedsAttentionCount</span></h2>
+                @if (dashboard.NeedsAttentionCount == 0)
                 {
-                    <li class="d-flex justify-content-between border-bottom py-1"><span>@location.Location</span><strong>@location.Count</strong></li>
+                    <p class="muted mb-0">Nothing is waiting. New clubs and closing deadlines will appear here.</p>
                 }
-            </ul>
-        }
+                else
+                {
+                    <ul class="attention-list">
+                        @foreach (var club in dashboard.PendingClubs)
+                        {
+                            <li>
+                                <div><strong>@club.Name</strong><span class="muted"> in @club.Location, waiting for verification</span></div>
+                                <a class="btn btn-sm btn-primary" href="admin/clubs/@club.ClubId">Review</a>
+                            </li>
+                        }
+                        @if (dashboard.PendingClubCount > dashboard.PendingClubs.Count)
+                        {
+                            <li><span class="muted">and @(dashboard.PendingClubCount - dashboard.PendingClubs.Count) more clubs</span><a href="admin/clubs">See all</a></li>
+                        }
+                        @foreach (var competition in dashboard.ClosingCompetitions)
+                        {
+                            <li>
+                                <div><strong>@competition.Name</strong><span class="muted"> registration closes @competition.ClosesAt.ToString("d MMM")</span></div>
+                                <a class="btn btn-sm btn-outline-primary" href="admin/competitions">Open</a>
+                            </li>
+                        }
+                        @if (dashboard.ClosingCompetitionCount > dashboard.ClosingCompetitions.Count)
+                        {
+                            <li><span class="muted">and @(dashboard.ClosingCompetitionCount - dashboard.ClosingCompetitions.Count) more competitions closing soon</span><a href="admin/competitions">See all</a></li>
+                        }
+                        @foreach (var announcement in dashboard.ExpiringAnnouncements)
+                        {
+                            <li>
+                                <div><strong>@announcement.Title</strong><span class="muted"> expires @announcement.ExpiresAt.ToString("d MMM")</span></div>
+                                <a class="btn btn-sm btn-outline-primary" href="admin/announcements">Open</a>
+                            </li>
+                        }
+                        @if (dashboard.ExpiringAnnouncementCount > dashboard.ExpiringAnnouncements.Count)
+                        {
+                            <li><span class="muted">and @(dashboard.ExpiringAnnouncementCount - dashboard.ExpiringAnnouncements.Count) more announcements expiring soon</span><a href="admin/announcements">See all</a></li>
+                        }
+                    </ul>
+                }
+                @if (dashboard.DraftCompetitionCount > 0)
+                {
+                    <p class="muted small mt-3 mb-0">@dashboard.DraftCompetitionCount unpublished @(dashboard.DraftCompetitionCount == 1 ? "competition" : "competitions") saved as drafts.</p>
+                }
+            </section>
+
+            <section class="panel" aria-labelledby="quality-heading">
+                <h2 id="quality-heading">Directory health</h2>
+                @if (dashboard.OpenQualityIssues == 0)
+                {
+                    <p class="mb-0"><span class="status-dot has-clubs" aria-hidden="true"></span>Every check is clear.</p>
+                }
+                else
+                {
+                    <ul class="attention-list">
+                        @foreach (var check in dashboard.QualityChecks.Where(q => q.Count > 0))
+                        {
+                            <li>
+                                <div><strong>@check.Count</strong> @check.Label.ToLowerInvariant()<br /><span class="muted small">@check.Hint</span></div>
+                                <a class="btn btn-sm btn-outline-primary" href="@check.Href">Fix</a>
+                            </li>
+                        }
+                    </ul>
+                }
+            </section>
+        </div>
+
+        <section class="panel mb-4" aria-labelledby="trend-heading">
+            <h2 id="trend-heading">Interest registrations per week</h2>
+            <p class="muted small">Last @AdminDashboardService.TrendWeeks weeks, counted when someone registers interest. These are not confirmed participants.</p>
+            <div class="trend" role="img" aria-label="@TrendSummary()">
+                @foreach (var week in dashboard.WeeklyInterest)
+                {
+                    <div class="trend-col">
+                        <span class="trend-value">@week.Count</span>
+                        <div class="trend-bar" style="height:@BarHeight(week.Count)%"></div>
+                        <span class="trend-label">@week.WeekStart.ToString("d MMM")</span>
+                    </div>
+                }
+            </div>
+        </section>
+
+        <section class="panel mb-4" aria-labelledby="demand-heading">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <h2 id="demand-heading" class="mb-0">Interest compared with clubs</h2>
+                <button type="button" class="btn btn-sm btn-outline-primary" @onclick="ExportAsync">Export CSV</button>
+            </div>
+            <p class="muted small">
+                Interest registrations are not confirmed participants or members. Individual participant records are
+                deliberately not shown in this application.
+            </p>
+            @if (insights.AllSports.Count == 0)
+            {
+                <p>No active sports. <a href="admin/sports">Add a sport</a>.</p>
+            }
+            else
+            {
+                var maxInterest = Math.Max(1, insights.AllSports.Max(s => s.InterestCount));
+                var underservedIds = insights.UnderservedSports.Select(s => s.SportId).ToHashSet();
+                var rows = showAllSports ? insights.AllSports : insights.AllSports.Take(8).ToList();
+                <ul class="demand-list">
+                    @foreach (var sport in rows)
+                    {
+                        <li>
+                            <div class="demand-name">
+                                @sport.SportName
+                                @if (underservedIds.Contains(sport.SportId)) { <span class="tag tag-warn">Underserved</span> }
+                            </div>
+                            <div class="demand-track" aria-hidden="true"><div class="demand-fill" style="width:@(sport.InterestCount * 100 / maxInterest)%"></div></div>
+                            <div class="demand-figures">@sport.InterestCount interested, @sport.ClubCount @(sport.ClubCount == 1 ? "club" : "clubs")</div>
+                        </li>
+                    }
+                </ul>
+                @if (insights.AllSports.Count > 8)
+                {
+                    <button type="button" class="btn btn-sm btn-link" @onclick="() => showAllSports = !showAllSports">
+                        @(showAllSports ? "Show fewer sports" : $"Show all {insights.AllSports.Count} sports")
+                    </button>
+                }
+            }
+        </section>
+
+        <section class="panel" aria-labelledby="locations-heading">
+            <h2 id="locations-heading">People who registered interest, by location</h2>
+            @if (insights.ParticipantsByLocation.Count == 0)
+            {
+                <p class="muted mb-0">No location has at least @CommunityInsights.MinimumGroupSize people yet. Smaller groups are hidden to protect privacy.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled col-md-6 mb-0">
+                    @foreach (var location in insights.ParticipantsByLocation)
+                    {
+                        <li class="d-flex justify-content-between border-bottom py-1"><span>@location.Location</span><strong>@location.Count</strong></li>
+                    }
+                </ul>
+            }
+        </section>
     }
 </div>
 
 @code {
     private CommunityInsights? insights;
+    private AdminDashboard? dashboard;
+    private bool showAllSports;
 
     protected override async Task OnInitializedAsync()
     {
         insights = await InsightsService.GetAsync();
+        dashboard = await DashboardService.GetAsync();
+    }
+
+    private int BarHeight(int count)
+    {
+        var max = Math.Max(1, dashboard!.WeeklyInterest.Max(w => w.Count));
+        return count == 0 ? 2 : Math.Max(6, count * 100 / max);
+    }
+
+    private string TrendSummary() =>
+        "Interest registrations per week, oldest first: " + string.Join(", ", dashboard!.WeeklyInterest.Select(w => w.Count));
+
+    private string ChangeText()
+    {
+        var change = AdminDashboardMath.PercentChange(dashboard!.InterestPrevious30Days, dashboard.InterestLast30Days);
+        return change is null
+            ? $"{dashboard.InterestLast30Days} in the last 30 days"
+            : $"{dashboard.InterestLast30Days} in the last 30 days ({(change >= 0 ? "+" : "")}{change}%)";
+    }
+
+    private async Task ExportAsync()
+    {
+        var csv = AdminCsv.Build(
+            new[] { "Sport", "Interest registrations", "Verified clubs" },
+            insights!.AllSports.Select(s => (IReadOnlyList<string>)new[] { s.SportName, s.InterestCount.ToString(), s.ClubCount.ToString() }));
+        await JS.InvokeVoidAsync("sportsClubHub.downloadText", $"interest-by-sport-{DateTime.UtcNow:yyyyMMdd}.csv", csv);
     }
 }

@@ -8,7 +8,6 @@
 
 <div class="container">
     <PageHeader Title="Manage competitions" Subtitle="Publish upcoming competitions with clear dates, locations, and registration details." />
-    <AdminNav />
     @if (message is not null) { <div class="alert alert-success" role="status">@message</div> }
     @if (errorMessage is not null) { <div class="alert alert-danger" role="alert">@errorMessage</div> }
     <div class="row g-4">

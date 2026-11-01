@@ -5,7 +5,6 @@
 
 <div class="container">
     <PageHeader Title="Manage clubs" Subtitle="Verify new clubs, edit club details and manage teams. Only verified, active clubs appear in the public directory." />
-    <AdminNav />
 
     @if (message is not null)
     {
@@ -24,6 +23,21 @@
         </div>
     </div>
 
+    @if (clubs is not null)
+    {
+        <div class="category-rail" role="group" aria-label="Filter by verification status">
+            <button type="button" class="chip @(statusFilter is null ? "active" : "")" aria-pressed="@(statusFilter is null ? "true" : "false")" @onclick="() => statusFilter = null">
+                All <span class="chip-count">@clubs.Count</span>
+            </button>
+            @foreach (var status in new[] { VerificationStatus.Pending, VerificationStatus.Verified, VerificationStatus.Rejected })
+            {
+                <button type="button" class="chip @(statusFilter == status ? "active" : "")" aria-pressed="@(statusFilter == status ? "true" : "false")" @onclick="() => statusFilter = status">
+                    @status.ToDisplayText() <span class="chip-count">@clubs.Count(c => c.VerificationStatus == status)</span>
+                </button>
+            }
+        </div>
+    }
+
     @if (clubs is null)
     {
         <p class="muted" role="status">Loading...</p>
@@ -40,7 +54,7 @@
                     <tr><th scope="col">Club</th><th scope="col">Sports</th><th scope="col">Verification</th><th scope="col">Listing</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr>
                 </thead>
                 <tbody>
-                    @foreach (var club in clubs)
+                    @foreach (var club in Visible())
                     {
                         <tr>
                             <td><strong>@club.Name</strong><br /><span class="muted">@club.Location</span></td>
@@ -70,6 +84,10 @@
                 </tbody>
             </table>
         </div>
+        @if (Visible().Count == 0)
+        {
+            <p class="muted mt-3">No clubs have this status.</p>
+        }
     }
 </div>
 
@@ -79,6 +97,14 @@
     private string? message;
     private string? errorMessage;
     private int requestNumber;
+    private VerificationStatus? statusFilter;
+
+    // Clubs waiting for a decision come first so they are never buried.
+    private List<Club> Visible() => clubs!
+        .Where(c => statusFilter is null || c.VerificationStatus == statusFilter)
+        .OrderBy(c => c.VerificationStatus == VerificationStatus.Pending ? 0 : 1)
+        .ThenBy(c => c.Name)
+        .ToList();
 
     protected override Task OnInitializedAsync() => LoadAsync();
 

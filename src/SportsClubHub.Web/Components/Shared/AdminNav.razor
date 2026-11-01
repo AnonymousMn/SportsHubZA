@@ -1,11 +1,31 @@
 <nav class="admin-nav" aria-label="Administration sections">
-    <NavLink href="admin" Match="NavLinkMatch.All">Overview</NavLink>
+    <AuthorizeView>
+        <Authorized>
+            <div class="admin-user">
+                <span class="admin-user-name">@context.User.Identity?.Name</span>
+                <span class="admin-user-role">@(context.User.IsInRole(AppRoles.Administrator) ? "Administrator" : "Staff")</span>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+
+    <NavLink href="admin" Match="NavLinkMatch.All">Dashboard</NavLink>
+
+    <p class="admin-nav-heading">Directory</p>
     <NavLink href="admin/sports">Sports</NavLink>
     <NavLink href="admin/clubs">Clubs and teams</NavLink>
     <NavLink href="admin/venues">Venues</NavLink>
+
+    <p class="admin-nav-heading">Engagement</p>
     <NavLink href="admin/announcements">Announcements</NavLink>
     <NavLink href="admin/competitions">Competitions</NavLink>
+
     <AuthorizeView Roles="@AppRoles.Administrator">
+        <p class="admin-nav-heading">System</p>
         <NavLink href="admin/accounts">Staff accounts</NavLink>
     </AuthorizeView>
+
+    <div class="admin-nav-footer">
+        <a href="/">View public site</a>
+        <a href="account/logout">Sign out</a>
+    </div>
 </nav>
