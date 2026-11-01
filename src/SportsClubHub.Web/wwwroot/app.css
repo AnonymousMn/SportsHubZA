@@ -1,6 +1,6 @@
 /* Sports Club Hub styles.
    Bootstrap 5 provides the grid, forms and buttons; this file adds the colours and a few components.
-   Palette: turf green and gold (a nod to the South African sporting colours), on a cool off-white. */
+   Palette: turf green and gold (a nod to the South African sporting colours), on a soft field-sage canvas. */
 
 :root {
     --turf: #176b45;
@@ -11,8 +11,8 @@
     --ink: #17251f;
     --muted: #68766e;
     --line: #dce5de;
-    --paper: #fafaf6;
-    --cream: #f0f6f1;
+    --paper: #e7eee9;
+    --cream: #f3f6f3;
     --danger: #a32121;
 
     --bs-body-color: var(--ink);
@@ -23,6 +23,13 @@
 }
 
 body { font-family: var(--bs-font-sans-serif); background: var(--paper); color: var(--ink); line-height: 1.55; }
+main#main-content {
+    background-color: var(--paper);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 900' fill='none'%3E%3Cg stroke='%23176b45' stroke-opacity='.055' stroke-width='5'%3E%3Crect x='55' y='35' width='1090' height='830' rx='16'/%3E%3Cpath d='M600 35v830'/%3E%3Ccircle cx='600' cy='450' r='150'/%3E%3Cpath d='M55 280h145v340H55m1090-340h-145v340h145M200 340h85v220h-85m800-220h-85v220h85'/%3E%3C/g%3E%3C/svg%3E");
+    background-position: center 1.5rem;
+    background-repeat: no-repeat;
+    background-size: min(1100px, 100vw) auto;
+}
 h1, h2, h3 { letter-spacing: -0.035em; font-weight: 750; }
 h1 { font-size: clamp(1.8rem, 1.4rem + 1.6vw, 2.6rem); }
 h2 { font-size: 1.4rem; }
