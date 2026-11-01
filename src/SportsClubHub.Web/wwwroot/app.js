@@ -3,6 +3,17 @@ window.sportsClubHub = {
     prefersReducedMotion: function () {
         return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     },
+    downloadText: function (fileName, text) {
+        var blob = new Blob([text], { type: 'text/csv;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    },
     focusById: function (id) {
         var element = document.getElementById(id);
         if (element) { element.focus(); }

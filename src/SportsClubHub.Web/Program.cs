@@ -35,6 +35,7 @@ builder.Services.AddScoped<TeamService>();
 builder.Services.AddScoped<VenueService>();
 builder.Services.AddScoped<ParticipantInterestService>();
 builder.Services.AddScoped<InsightsService>();
+builder.Services.AddScoped<AdminDashboardService>();
 builder.Services.AddScoped<AnnouncementService>();
 builder.Services.AddScoped<CompetitionService>();
 builder.Services.AddScoped<AdminAccountService>();
