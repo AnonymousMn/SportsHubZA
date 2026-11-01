@@ -1,7 +1,12 @@
 @page "/clubs/register"
-@rendermode InteractiveNoPrerender
+@rendermode InteractivePrerendered
 @inject ClubService ClubService
 @inject SportService SportService
+
+<PageTitle>Register a sports club | Sports Club Hub</PageTitle>
+<SeoHead Title="Register your sports club | Sports Club Hub"
+         Description="Add your sports club to the Sports Club Hub directory. New listings are reviewed before they become public."
+         NoIndex="true" />
 
 <div class="container">
     <PageHeader Title="Register your club"

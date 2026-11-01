@@ -1,11 +1,14 @@
 @page "/nearby"
-@rendermode InteractiveNoPrerender
+@rendermode InteractivePrerendered
 @using Microsoft.JSInterop
 @inject IJSRuntime JS
 @inject ClubService ClubService
 @inject SportService SportService
 
 <PageTitle>Clubs near you | Sports Club Hub</PageTitle>
+<SeoHead Title="Find sports clubs near your location | Sports Club Hub"
+         Description="Find verified sports clubs near you using your approximate location. Your location is used for the search and is not stored."
+         NoIndex="true" />
 
 <div class="container">
     <section class="page-intro">

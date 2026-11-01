@@ -10,6 +10,11 @@ namespace SportsClubHub.Web.Components;
 /// </summary>
 public static class AppRenderModes
 {
+    // Public discovery pages prerender their content and metadata for search engines.
+    public static readonly IComponentRenderMode InteractivePrerendered =
+        new InteractiveServerRenderMode(prerender: true);
+
+    // Keep this for pages where avoiding a second initialization is more important than crawlable HTML.
     public static readonly IComponentRenderMode InteractiveNoPrerender =
         new InteractiveServerRenderMode(prerender: false);
 }
