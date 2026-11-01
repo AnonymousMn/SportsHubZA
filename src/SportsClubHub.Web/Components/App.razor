@@ -8,11 +8,17 @@
     <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
     <link rel="stylesheet" href="app.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
+    <meta name="theme-color" content="#123c2d" />
     <HeadOutlet />
 </head>
 
 <body>
     <Routes />
+    <div id="route-loading" class="route-loading" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true">
+        <span class="route-loading-track" aria-hidden="true"><span></span></span>
+        <span class="route-loading-spinner" aria-hidden="true"></span>
+        <span>Loading page</span>
+    </div>
     <script src="app.js"></script>
     <script src="_framework/blazor.web.js"></script>
 </body>

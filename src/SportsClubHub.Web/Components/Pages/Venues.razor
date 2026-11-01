@@ -1,8 +1,12 @@
 @page "/venues"
-@rendermode InteractiveNoPrerender
+@rendermode InteractivePrerendered
 @inject IJSRuntime JS
 @inject VenueService VenueService
 @inject SportService SportService
+
+<PageTitle>Sports venues near you | Sports Club Hub</PageTitle>
+<SeoHead Title="Find sports fields, courts and venues | Sports Club Hub"
+         Description="Find sports fields, courts, pools, halls and other places to play in your community. Search venues by sport or location." />
 
 <div class="container">
     <PageHeader Title="Venues" Subtitle="Fields, courts, halls and pools where sport is played, and which sports each one supports." />

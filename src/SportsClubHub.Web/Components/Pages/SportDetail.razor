@@ -1,8 +1,13 @@
 @page "/sports/{Id:int}"
-@rendermode InteractiveNoPrerender
+@rendermode InteractivePrerendered
 @inject SportService SportService
 @inject ClubService ClubService
 @inject VenueService VenueService
+
+<PageTitle>@(sport is null ? "Sport details | Sports Club Hub" : $"{sport.Name} clubs and venues | Sports Club Hub")</PageTitle>
+<SeoHead Title="@(sport is null ? "Explore a sport locally | Sports Club Hub" : $"Play {sport.Name} locally | Sports Club Hub")"
+         Description="@(sport is null ? "Explore sports and find local clubs and places to play across South Africa." : $"Discover clubs and venues for {sport.Name} in your community. Explore local opportunities with Sports Club Hub.")"
+         NoIndex="@(sport is null || !sport.IsActive)" />
 
 <div class="container">
     @if (loading)

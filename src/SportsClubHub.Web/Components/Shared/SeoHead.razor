@@ -1,0 +1,35 @@
+@inject NavigationManager Navigation
+
+<HeadContent>
+    <meta name="description" content="@Description" />
+    <meta name="robots" content="@(NoIndex ? "noindex, nofollow" : "index, follow")" />
+    <link rel="canonical" href="@CanonicalUrl" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Sports Club Hub" />
+    <meta property="og:title" content="@Title" />
+    <meta property="og:description" content="@Description" />
+    <meta property="og:url" content="@CanonicalUrl" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="@Title" />
+    <meta name="twitter:description" content="@Description" />
+</HeadContent>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Description { get; set; } = string.Empty;
+
+    [Parameter]
+    public bool NoIndex { get; set; }
+
+    private string CanonicalUrl
+    {
+        get
+        {
+            var uri = new Uri(Navigation.Uri);
+            return uri.GetLeftPart(UriPartial.Path);
+        }
+    }
+}

@@ -1,9 +1,11 @@
 @page "/sports"
-@rendermode InteractiveNoPrerender
+@rendermode InteractivePrerendered
 @inject SportService SportService
 @inject IJSRuntime JS
 
 <PageTitle>Sports | Sports Club Hub</PageTitle>
+<SeoHead Title="Browse sports in South Africa | Sports Club Hub"
+         Description="Explore sports available in your community, from football and netball to swimming and athletics. Find local clubs and venues for each sport." />
 
 <div class="container">
     <PageHeader Title="Sports" Subtitle="Browse the sports available in your community, then find clubs and venues for them." />

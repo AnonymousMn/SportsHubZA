@@ -1,6 +1,11 @@
 @page "/clubs/{Id:int}"
-@rendermode InteractiveNoPrerender
+@rendermode InteractivePrerendered
 @inject ClubService ClubService
+
+<PageTitle>@(club is null ? "Sports club details | Sports Club Hub" : $"{club.Name} in {club.Location} | Sports Club Hub")</PageTitle>
+<SeoHead Title="@(club is null ? "Find a local sports club | Sports Club Hub" : $"{club.Name} | Sports Club Hub")"
+         Description="@(club is null ? "Explore verified sports clubs and local teams across South Africa." : $"Explore {club.Name} in {club.Location}. See its sports, teams and contact details on Sports Club Hub.")"
+         NoIndex="@(club is null || !club.IsActive || club.VerificationStatus != VerificationStatus.Verified)" />
 
 <div class="container">
     @if (loading)

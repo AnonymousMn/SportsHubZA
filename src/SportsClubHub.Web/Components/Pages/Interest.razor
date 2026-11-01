@@ -1,9 +1,14 @@
 @page "/get-involved"
-@rendermode InteractiveNoPrerender
+@rendermode InteractivePrerendered
 @inject ParticipantInterestService InterestService
 @inject ClubService ClubService
 @inject SportService SportService
 @inject VenueService VenueService
+
+<PageTitle>Register your interest in local sport | Sports Club Hub</PageTitle>
+<SeoHead Title="Get involved in local sport | Sports Club Hub"
+         Description="Tell us which sports you would like to play. Your interest helps communities see where more clubs and venues are needed."
+         NoIndex="true" />
 
 <div class="container">
     <PageHeader Title="Register your interest"

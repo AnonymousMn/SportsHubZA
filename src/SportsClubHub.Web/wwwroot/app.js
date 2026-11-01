@@ -53,3 +53,53 @@ window.sportsClubHub = {
         });
     });
 })();
+
+// Give visitors immediate feedback while an internal route loads. Enhanced navigation
+// replaces the route without a full document load, so clear the indicator after each update.
+(function () {
+    var indicator = document.getElementById('route-loading');
+    var mainContent = document.getElementById('main-content');
+    var hideTimer;
+
+    function hideRouteLoading() {
+        if (hideTimer) { window.clearTimeout(hideTimer); }
+        if (indicator) {
+            indicator.classList.remove('is-active');
+            indicator.setAttribute('aria-hidden', 'true');
+        }
+        if (mainContent) { mainContent.removeAttribute('aria-busy'); }
+    }
+
+    function showRouteLoading() {
+        if (!indicator) { return; }
+        indicator.classList.add('is-active');
+        indicator.setAttribute('aria-hidden', 'false');
+        if (mainContent) { mainContent.setAttribute('aria-busy', 'true'); }
+        if (hideTimer) { window.clearTimeout(hideTimer); }
+        hideTimer = window.setTimeout(hideRouteLoading, 12000);
+    }
+
+    document.addEventListener('click', function (event) {
+        if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+            return;
+        }
+
+        var link = event.target.closest && event.target.closest('a[href]');
+        if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self')) { return; }
+
+        var destination;
+        try { destination = new URL(link.href, window.location.href); }
+        catch (_) { return; }
+
+        if (destination.origin !== window.location.origin ||
+            (destination.pathname === window.location.pathname && destination.search === window.location.search)) {
+            return;
+        }
+
+        showRouteLoading();
+    });
+
+    document.addEventListener('enhancedload', hideRouteLoading);
+    window.addEventListener('pageshow', hideRouteLoading);
+    window.addEventListener('popstate', showRouteLoading);
+})();
