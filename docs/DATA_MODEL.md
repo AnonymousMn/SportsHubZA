@@ -14,6 +14,7 @@
 | `SportInterest` | Participant/sport join | Composite key prevents duplicate interest |
 | `AdminUser` | Staff identity | Unique e-mail; password hash only; role and active flag |
 | `Announcement` | Public staff-managed update | Draft/publish/pin/priority/expiry state |
+| `AdminTask` | Internal to-do item for administrators | Title, notes, status (Open/InProgress/Done), priority, due date, assignee and creator (`AdminUser`), timestamps. Holds no participant personal data. The table is created at startup with `CREATE TABLE IF NOT EXISTS` like the other late additions; move it into a migration when migrations are introduced. |
 | `Competition` | Optional scheduled event | Linked to active sport; optional club and venue |
 
 ## Relationships and deletion
