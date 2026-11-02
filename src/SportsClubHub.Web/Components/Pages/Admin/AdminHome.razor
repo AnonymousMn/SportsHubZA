@@ -3,6 +3,8 @@
 @rendermode InteractiveNoPrerender
 @inject InsightsService InsightsService
 @inject AdminDashboardService DashboardService
+@inject AdminTaskService TaskService
+@inject EmailService Email
 @inject IJSRuntime JS
 
 <PageTitle>Dashboard | Sports Club Hub admin</PageTitle>
@@ -107,6 +109,61 @@
             </section>
         </div>
 
+        <div class="admin-grid">
+            <section class="panel" aria-labelledby="my-tasks-heading">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h2 id="my-tasks-heading" class="mb-0">My tasks <span class="chip-count">@taskCounts.MyOpen</span></h2>
+                    <a class="btn btn-sm btn-outline-primary" href="admin/tasks">Open task list</a>
+                </div>
+                @if (taskCounts.MyOverdue > 0)
+                {
+                    <p class="task-overdue mb-2">@taskCounts.MyOverdue of your tasks @(taskCounts.MyOverdue == 1 ? "is" : "are") overdue.</p>
+                }
+                @if (myTasks.Count == 0)
+                {
+                    <p class="muted mb-0">Nothing is assigned to you right now.</p>
+                }
+                else
+                {
+                    <ul class="attention-list">
+                        @foreach (var item in myTasks)
+                        {
+                            <li>
+                                <div><strong>@item.Task.Title</strong><br /><span class="muted small @(AdminTaskRules.IsOverdue(item.Task, taskToday) ? "task-overdue" : "")">@AdminTaskRules.DueLabel(item.Task.DueDate, taskToday)</span></div>
+                            </li>
+                        }
+                    </ul>
+                }
+                <p class="muted small mt-3 mb-0">Team: @taskCounts.OpenTotal open, @taskCounts.TeamOverdue overdue, @taskCounts.Unassigned unassigned.</p>
+            </section>
+
+            <section class="panel" aria-labelledby="email-heading">
+                <h2 id="email-heading">Email notifications</h2>
+                @switch (emailStatus.State)
+                {
+                    case EmailState.Ready:
+                        <p><span class="status-dot has-clubs" aria-hidden="true"></span>Ready. Messages are queued and retried automatically if the mail server is busy.</p>
+                        break;
+                    case EmailState.NeedsSetup:
+                        <p><span class="status-dot" aria-hidden="true"></span>Needs setup. Missing: @string.Join(", ", emailStatus.MissingSettings).</p>
+                        break;
+                    default:
+                        <p class="muted"><span class="status-dot" aria-hidden="true"></span>Turned off. No notification emails are sent (set <code>Email__Enabled=true</code> to turn them on).</p>
+                        break;
+                }
+                <AuthorizeView Roles="@AppRoles.Administrator">
+                    @if (emailStatus.State == EmailState.Ready)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-primary" disabled="@sendingTest" @onclick="SendTestAsync">Send a test email to me</button>
+                    }
+                </AuthorizeView>
+                @if (testMessage is not null)
+                {
+                    <p class="mt-2 mb-0" role="status">@testMessage</p>
+                }
+            </section>
+        </div>
+
         <section class="panel mb-4" aria-labelledby="trend-heading">
             <h2 id="trend-heading">Interest registrations per week</h2>
             <p class="muted small">Last @AdminDashboardService.TrendWeeks weeks, counted when someone registers interest. These are not confirmed participants.</p>
@@ -185,11 +242,39 @@
     private CommunityInsights? insights;
     private AdminDashboard? dashboard;
     private bool showAllSports;
+    private AdminTaskCounts taskCounts = new(0, 0, 0, 0, 0);
+    private List<AdminTaskItem> myTasks = new();
+    private DateTime taskToday = AdminTaskRules.Today(DateTime.UtcNow);
+    private EmailStatus emailStatus = new(EmailState.Disabled, Array.Empty<string>());
+    private string? signedInAddress;
+    private string? testMessage;
+    private bool sendingTest;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
+        var state = await AuthenticationStateTask;
+        _ = int.TryParse(state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var actorId);
+        signedInAddress = state.User.Identity?.Name;
+
         insights = await InsightsService.GetAsync();
         dashboard = await DashboardService.GetAsync();
+        taskCounts = await TaskService.GetCountsAsync(actorId);
+        myTasks = AdminTaskRules.Group(await TaskService.ListAsync(AdminTaskView.Mine, actorId), taskToday)
+            .SelectMany(group => group.Items)
+            .Take(5)
+            .ToList();
+        emailStatus = Email.GetStatus();
+    }
+
+    private async Task SendTestAsync()
+    {
+        sendingTest = true;
+        var result = await Email.SendTestAsync(signedInAddress ?? string.Empty);
+        testMessage = result.Succeeded ? $"Test email sent to {signedInAddress}." : result.Error;
+        sendingTest = false;
     }
 
     private int BarHeight(int count)

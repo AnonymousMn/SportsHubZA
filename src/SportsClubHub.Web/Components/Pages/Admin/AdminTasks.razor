@@ -1,0 +1,294 @@
+@page "/admin/tasks"
+@attribute [Authorize(Roles = AppRoles.Administrator + "," + AppRoles.Staff)]
+@rendermode InteractiveNoPrerender
+@inject AdminTaskService TaskService
+
+<PageTitle>Tasks | Sports Club Hub admin</PageTitle>
+
+<div class="container">
+    <PageHeader Title="Tasks" Subtitle="The team's to-do list. Add work, hand it to the right person, and tick it off." />
+
+    @if (message is not null)
+    {
+        <div class="alert alert-success" role="status">@message</div>
+    }
+    @if (errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@errorMessage</div>
+    }
+
+    <div class="task-toolbar">
+        <div class="category-rail" role="group" aria-label="Show tasks">
+            <button type="button" class="chip @(view == AdminTaskView.Mine ? "active" : "")" aria-pressed="@(view == AdminTaskView.Mine ? "true" : "false")" @onclick="() => ChangeViewAsync(AdminTaskView.Mine)">
+                My tasks @if (counts is not null) { <span class="chip-count">@counts.MyOpen</span> }
+            </button>
+            <button type="button" class="chip @(view == AdminTaskView.TeamOpen ? "active" : "")" aria-pressed="@(view == AdminTaskView.TeamOpen ? "true" : "false")" @onclick="() => ChangeViewAsync(AdminTaskView.TeamOpen)">
+                Everyone @if (counts is not null) { <span class="chip-count">@counts.OpenTotal</span> }
+            </button>
+            <button type="button" class="chip @(view == AdminTaskView.Unassigned ? "active" : "")" aria-pressed="@(view == AdminTaskView.Unassigned ? "true" : "false")" @onclick="() => ChangeViewAsync(AdminTaskView.Unassigned)">
+                Unassigned @if (counts is not null) { <span class="chip-count">@counts.Unassigned</span> }
+            </button>
+            <button type="button" class="chip @(view == AdminTaskView.Done ? "active" : "")" aria-pressed="@(view == AdminTaskView.Done ? "true" : "false")" @onclick="() => ChangeViewAsync(AdminTaskView.Done)">Done</button>
+        </div>
+        <button type="button" class="btn btn-primary" @onclick="StartNew">New task</button>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" for="task-search">Search tasks</label>
+        <input id="task-search" class="form-control" type="search" placeholder="Title or notes" @bind="search" @bind:event="oninput" @bind:after="LoadAsync" />
+    </div>
+
+    @if (showForm)
+    {
+        <section class="panel mb-4" aria-labelledby="task-form-heading">
+            <h2 id="task-form-heading">@(editingId == 0 ? "New task" : "Edit task")</h2>
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label" for="task-title">Title</label>
+                    <input id="task-title" class="form-control" maxlength="@AdminTaskRules.MaxTitleLength" @bind="form.Title" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="task-notes">Notes (optional)</label>
+                    <textarea id="task-notes" class="form-control" rows="3" maxlength="@AdminTaskRules.MaxNotesLength" @bind="form.Notes"></textarea>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="task-assignee">Assign to</label>
+                    <select id="task-assignee" class="form-select" @bind="form.AssignedToAdminUserId">
+                        <option value="">Unassigned</option>
+                        @foreach (var person in assignees)
+                        {
+                            <option value="@person.AdminUserId">@person.Email@(person.AdminUserId == actorId ? " (me)" : "")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="task-priority">Priority</label>
+                    <select id="task-priority" class="form-select" @bind="form.Priority">
+                        @foreach (var priority in Enum.GetValues<AdminTaskPriority>())
+                        {
+                            <option value="@priority">@priority.ToDisplayText()</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="task-due">Due date (optional)</label>
+                    <input id="task-due" class="form-control" type="date" @bind="form.DueDate" />
+                </div>
+            </div>
+            <div class="mt-3 d-flex gap-2">
+                <button type="button" class="btn btn-primary" @onclick="SaveAsync">Save task</button>
+                <button type="button" class="btn btn-outline-secondary" @onclick="CancelForm">Cancel</button>
+            </div>
+        </section>
+    }
+
+    @if (items is null)
+    {
+        <p class="muted" role="status">Loading...</p>
+    }
+    else if (items.Count == 0)
+    {
+        <div class="panel">
+            <p class="mb-0">@EmptyText()</p>
+        </div>
+    }
+    else
+    {
+        var today = AdminTaskRules.Today(DateTime.UtcNow);
+        @foreach (var (section, sectionItems) in AdminTaskRules.Group(items, today))
+        {
+            <section class="task-section" aria-label="@AdminTaskRules.SectionTitle(section)">
+                <h2 class="task-section-title @(section == TaskSection.Overdue ? "is-overdue" : "")">
+                    @AdminTaskRules.SectionTitle(section) <span class="chip-count">@sectionItems.Count</span>
+                </h2>
+                <ul class="task-list">
+                    @foreach (var item in sectionItems)
+                    {
+                        var task = item.Task;
+                        var done = task.Status == AdminTaskStatus.Done;
+                        var overdue = AdminTaskRules.IsOverdue(task, today);
+                        var canModify = AdminTaskRules.CanModify(task, actorId, isAdministrator);
+                        <li class="task-row @(done ? "is-done" : "")">
+                            <input type="checkbox" class="form-check-input task-check" checked="@done" disabled="@(!canModify)"
+                                   aria-label="@(done ? "Reopen" : "Mark done"): @task.Title"
+                                   @onchange="e => ToggleDoneAsync(task, (bool)(e.Value ?? false))" />
+                            <div class="task-main">
+                                <div class="task-title">
+                                    @task.Title
+                                    @if (task.Priority == AdminTaskPriority.Urgent) { <span class="tag tag-bad">Urgent</span> }
+                                    else if (task.Priority == AdminTaskPriority.High) { <span class="tag tag-warn">High</span> }
+                                    else if (task.Priority == AdminTaskPriority.Low) { <span class="tag">Low</span> }
+                                    @if (task.Status == AdminTaskStatus.InProgress) { <span class="tag">In progress</span> }
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(task.Notes))
+                                {
+                                    <p class="task-notes">@task.Notes</p>
+                                }
+                                <div class="task-meta">
+                                    <span class="@(overdue ? "task-overdue" : "")">@AdminTaskRules.DueLabel(task.DueDate, today)</span>
+                                    <span aria-hidden="true">&middot;</span>
+                                    <span>Added by @item.CreatorEmail</span>
+                                </div>
+                            </div>
+                            <div class="task-actions">
+                                @if (canModify || task.AssignedToAdminUserId is null)
+                                {
+                                    <select class="form-select form-select-sm" aria-label="Assigned to, @task.Title" @onchange="e => AssignAsync(task, e.Value?.ToString())">
+                                        <option value="" selected="@(task.AssignedToAdminUserId is null)">Unassigned</option>
+                                        @foreach (var person in assignees)
+                                        {
+                                            <option value="@person.AdminUserId" selected="@(person.AdminUserId == task.AssignedToAdminUserId)">@person.Email@(person.AdminUserId == actorId ? " (me)" : "")</option>
+                                        }
+                                    </select>
+                                }
+                                else
+                                {
+                                    <span class="muted small">@(item.AssigneeEmail ?? "Unassigned")</span>
+                                }
+                                @if (canModify && !done)
+                                {
+                                    <select class="form-select form-select-sm" aria-label="Status, @task.Title" @onchange="e => SetStatusAsync(task, e.Value?.ToString())">
+                                        <option value="@AdminTaskStatus.Open" selected="@(task.Status == AdminTaskStatus.Open)">Open</option>
+                                        <option value="@AdminTaskStatus.InProgress" selected="@(task.Status == AdminTaskStatus.InProgress)">In progress</option>
+                                    </select>
+                                }
+                                @if (canModify)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => StartEdit(task)">Edit</button>
+                                }
+                                @if (isAdministrator || task.CreatedByAdminUserId == actorId)
+                                {
+                                    @if (deletingId == task.AdminTaskId)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-danger" @onclick="() => DeleteAsync(task)">Confirm delete</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => deletingId = 0">Keep</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => deletingId = task.AdminTaskId">Delete</button>
+                                    }
+                                }
+                            </div>
+                        </li>
+                    }
+                </ul>
+            </section>
+        }
+    }
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
+
+    private int actorId;
+    private bool isAdministrator;
+    private AdminTaskView view = AdminTaskView.Mine;
+    private string search = string.Empty;
+    private List<AdminTaskItem>? items;
+    private List<AdminAssignee> assignees = new();
+    private AdminTaskCounts? counts;
+    private string? message;
+    private string? errorMessage;
+    private bool showForm;
+    private int editingId;
+    private int deletingId;
+    private AdminTaskInput form = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthenticationStateTask;
+        _ = int.TryParse(state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out actorId);
+        isAdministrator = state.User.IsInRole(AppRoles.Administrator);
+        assignees = await TaskService.ListAssigneesAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        items = await TaskService.ListAsync(view, actorId, search);
+        counts = await TaskService.GetCountsAsync(actorId);
+    }
+
+    private string EmptyText() => view switch
+    {
+        AdminTaskView.Mine => "Nothing is assigned to you. Pick up an unassigned task or add a new one.",
+        AdminTaskView.Unassigned => "Every open task has an owner.",
+        AdminTaskView.Done => "No completed tasks yet.",
+        _ => "There are no open tasks. Add one with New task."
+    };
+
+    private async Task ChangeViewAsync(AdminTaskView next)
+    {
+        view = next;
+        deletingId = 0;
+        await LoadAsync();
+    }
+
+    private void StartNew()
+    {
+        form = new AdminTaskInput { AssignedToAdminUserId = actorId };
+        editingId = 0;
+        showForm = true;
+        ClearMessages();
+    }
+
+    private void StartEdit(AdminTask task)
+    {
+        form = new AdminTaskInput
+        {
+            Title = task.Title,
+            Notes = task.Notes,
+            Priority = task.Priority,
+            DueDate = task.DueDate,
+            AssignedToAdminUserId = task.AssignedToAdminUserId
+        };
+        editingId = task.AdminTaskId;
+        showForm = true;
+        ClearMessages();
+    }
+
+    private void CancelForm() => showForm = false;
+
+    private void ClearMessages()
+    {
+        message = null;
+        errorMessage = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        var result = editingId == 0
+            ? await TaskService.CreateAsync(form, actorId)
+            : await TaskService.UpdateAsync(editingId, form, actorId, isAdministrator);
+        await FinishAsync(result, editingId == 0 ? "Task added." : "Task updated.");
+        if (result.Succeeded) { showForm = false; }
+    }
+
+    private async Task ToggleDoneAsync(AdminTask task, bool done) =>
+        await FinishAsync(await TaskService.SetStatusAsync(task.AdminTaskId, done ? AdminTaskStatus.Done : AdminTaskStatus.Open, actorId, isAdministrator), null);
+
+    private async Task SetStatusAsync(AdminTask task, string? value) =>
+        await FinishAsync(Enum.TryParse<AdminTaskStatus>(value, out var status)
+            ? await TaskService.SetStatusAsync(task.AdminTaskId, status, actorId, isAdministrator)
+            : OperationResult.Fail("Choose a status."), null);
+
+    private async Task AssignAsync(AdminTask task, string? value)
+    {
+        int? assigneeId = int.TryParse(value, out var id) ? id : null;
+        await FinishAsync(await TaskService.AssignAsync(task.AdminTaskId, assigneeId, actorId, isAdministrator), null);
+    }
+
+    private async Task DeleteAsync(AdminTask task)
+    {
+        deletingId = 0;
+        await FinishAsync(await TaskService.DeleteAsync(task.AdminTaskId, actorId, isAdministrator), "Task deleted.");
+    }
+
+    private async Task FinishAsync(OperationResult result, string? success)
+    {
+        message = result.Succeeded ? success : null;
+        errorMessage = result.Error;
+        await LoadAsync();
+    }
+}

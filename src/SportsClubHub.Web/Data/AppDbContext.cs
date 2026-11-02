@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<AdminUser> AdminUsers => Set<AdminUser>();
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<Competition> Competitions => Set<Competition>();
+    public DbSet<AdminTask> AdminTasks => Set<AdminTask>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -92,5 +93,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Competition>()
             .HasOne(c => c.Venue).WithMany()
             .HasForeignKey(c => c.VenueId).OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AdminTask>().Property(t => t.Status).HasConversion<string>();
+        modelBuilder.Entity<AdminTask>().Property(t => t.Priority).HasConversion<string>();
+        modelBuilder.Entity<AdminTask>()
+            .HasOne(t => t.AssignedTo).WithMany()
+            .HasForeignKey(t => t.AssignedToAdminUserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<AdminTask>()
+            .HasOne(t => t.CreatedBy).WithMany()
+            .HasForeignKey(t => t.CreatedByAdminUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdminTask>().HasIndex(t => new { t.Status, t.AssignedToAdminUserId });
     }
 }
