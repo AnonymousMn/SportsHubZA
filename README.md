@@ -143,6 +143,8 @@ Design choices that are worth knowing:
 
 ### Gmail notifications
 
+How e-mail behaves: messages are queued in memory and sent in the background, so a slow or broken mail server never delays a registration. Temporary failures (timeouts, busy server) are retried twice; bad settings or bad addresses are not retried. Queued mail is lost if the app restarts before it is sent. Logs show recipients only in masked form (for example `j***@example.com`). Use port 587; implicit-TLS port 465 is not supported. Spaces in a Google App Password are ignored. Administrators can see the e-mail status and send a test message from the admin dashboard.
+
 Set these environment variables on Render to enable email. A normal Gmail account is supported, but Gmail requires 2-Step Verification and a Google App Password; do not use the normal Gmail account password.
 
 ```text
@@ -156,6 +158,7 @@ Email__FromAddress=your-gmail-address@gmail.com
 Email__FromName=Sports Club Hub SA
 ```
 - Insights (public, aggregate only): counts, most popular sports, sports with interest but few clubs, clubs and people by location
+- Admin tasks: a shared to-do list at `/admin/tasks` with assignment, priority, due dates and an e-mail to the new assignee; the dashboard shows each person's open and overdue tasks
 - Staff sign in with cookie authentication, hashed passwords, role-based authorisation on all `/admin` pages
 - Privacy notice page (a template to be completed by the operator)
 

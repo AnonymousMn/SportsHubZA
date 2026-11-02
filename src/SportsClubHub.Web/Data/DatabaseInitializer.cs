@@ -36,6 +36,7 @@ public class DatabaseInitializer
         await EnsureAdminAccountColumnsAsync(db);
         await EnsureAnnouncementsTableAsync(db);
         await EnsureCompetitionsTableAsync(db);
+        await EnsureAdminTasksTableAsync(db);
         await EnsureCoordinateColumnsAsync(db);
         await EnsureDuplicateProtectionIndexesAsync(db);
 
@@ -78,6 +79,31 @@ public class DatabaseInitializer
                 CreatedAt TEXT NOT NULL
             );
             """);
+    }
+
+    // Same approach as the other tables here, so existing databases gain the table without a rebuild.
+    // New databases get an identical table from the model through EnsureCreated.
+    private static async Task EnsureAdminTasksTableAsync(AppDbContext db)
+    {
+        await db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS AdminTasks (
+                AdminTaskId INTEGER NOT NULL CONSTRAINT PK_AdminTasks PRIMARY KEY AUTOINCREMENT,
+                Title TEXT NOT NULL,
+                Notes TEXT NULL,
+                Status TEXT NOT NULL,
+                Priority TEXT NOT NULL,
+                DueDate TEXT NULL,
+                AssignedToAdminUserId INTEGER NULL,
+                CreatedByAdminUserId INTEGER NOT NULL,
+                CreatedAt TEXT NOT NULL,
+                UpdatedAt TEXT NOT NULL,
+                CompletedAt TEXT NULL,
+                CONSTRAINT FK_AdminTasks_AdminUsers_AssignedToAdminUserId FOREIGN KEY (AssignedToAdminUserId) REFERENCES AdminUsers (AdminUserId) ON DELETE SET NULL,
+                CONSTRAINT FK_AdminTasks_AdminUsers_CreatedByAdminUserId FOREIGN KEY (CreatedByAdminUserId) REFERENCES AdminUsers (AdminUserId) ON DELETE RESTRICT
+            );
+            """);
+        await db.Database.ExecuteSqlRawAsync(
+            "CREATE INDEX IF NOT EXISTS IX_AdminTasks_Status_AssignedToAdminUserId ON AdminTasks (Status, AssignedToAdminUserId);");
     }
 
     private static async Task EnsureAnnouncementsTableAsync(AppDbContext db)

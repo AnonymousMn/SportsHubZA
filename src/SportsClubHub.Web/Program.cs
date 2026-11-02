@@ -36,11 +36,14 @@ builder.Services.AddScoped<VenueService>();
 builder.Services.AddScoped<ParticipantInterestService>();
 builder.Services.AddScoped<InsightsService>();
 builder.Services.AddScoped<AdminDashboardService>();
+builder.Services.AddScoped<AdminTaskService>();
 builder.Services.AddScoped<AnnouncementService>();
 builder.Services.AddScoped<CompetitionService>();
 builder.Services.AddScoped<AdminAccountService>();
 builder.Services.AddScoped<DatabaseInitializer>();
+builder.Services.AddSingleton<IEmailTransport, SmtpEmailTransport>();
 builder.Services.AddSingleton<EmailService>();
+builder.Services.AddHostedService<EmailQueueWorker>();
 
 // ---------- Authentication and authorisation ----------
 builder.Services
