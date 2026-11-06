@@ -1,5 +1,9 @@
 using System.Data;
 using System.Reflection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using SportsClubHub.Domain.Entities;
@@ -11,6 +15,105 @@ namespace SportsClubHub.Tests;
 
 public sealed class FileBackedPersistenceTests
 {
+    [Fact]
+    public async Task InitializerCreatesFreshFileDatabaseFromMigrations()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "SportsClubHubTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var databasePath = Path.Combine(directory, "fresh.db");
+
+        try
+        {
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite($"Data Source={databasePath};Pooling=False")
+                .Options;
+            var factory = new SingleContextFactory(options);
+            var configuration = new ConfigurationBuilder().Build();
+            var adminAccounts = new AdminAccountService(
+                factory,
+                configuration,
+                new TestHostEnvironment { EnvironmentName = "Production", ContentRootPath = directory },
+                NullLogger<AdminAccountService>.Instance);
+            var initializer = new DatabaseInitializer(
+                factory,
+                adminAccounts,
+                configuration,
+                NullLogger<DatabaseInitializer>.Instance);
+
+            await initializer.InitialiseAsync();
+
+            await using var migrated = new AppDbContext(options);
+            Assert.True(await migrated.Sports.AnyAsync());
+            Assert.Equal(2, (await migrated.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(1, await migrated.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM sqlite_master WHERE type = 'table' AND name = 'SiteSettings'").SingleAsync());
+            Assert.Equal(ConnectionState.Closed, migrated.Database.GetDbConnection().State);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task InitializerMigratesLegacyFileDatabaseAndKeepsExistingRows()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "SportsClubHubTests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var databasePath = Path.Combine(directory, "legacy.db");
+
+        try
+        {
+            var options = new DbContextOptionsBuilder<AppDbContext>()
+                .UseSqlite($"Data Source={databasePath};Pooling=False")
+                .Options;
+            var factory = new SingleContextFactory(options);
+
+            await using (var legacyDb = new AppDbContext(options))
+            {
+                await legacyDb.Database.EnsureCreatedAsync();
+                legacyDb.Sports.Add(new Sport { Name = "Legacy Sport" });
+                legacyDb.Clubs.Add(new Club { Name = "Legacy Club", Location = "Gqeberha" });
+                await legacyDb.SaveChangesAsync();
+                await legacyDb.Database.ExecuteSqlRawAsync("DROP TABLE SiteMedia;");
+                await legacyDb.Database.ExecuteSqlRawAsync("DROP TABLE SiteSettings;");
+            }
+
+            var configuration = new ConfigurationBuilder().Build();
+            var adminAccounts = new AdminAccountService(
+                factory,
+                configuration,
+                new TestHostEnvironment { EnvironmentName = "Production", ContentRootPath = directory },
+                NullLogger<AdminAccountService>.Instance);
+            var initializer = new DatabaseInitializer(
+                factory,
+                adminAccounts,
+                configuration,
+                NullLogger<DatabaseInitializer>.Instance);
+
+            await initializer.InitialiseAsync();
+
+            await using var migrated = new AppDbContext(options);
+            Assert.Equal("Legacy Sport", await migrated.Sports.Select(s => s.Name).SingleAsync());
+            Assert.Equal("Legacy Club", await migrated.Clubs.Select(c => c.Name).SingleAsync());
+            Assert.Equal(1, await migrated.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM sqlite_master WHERE type = 'table' AND name = 'SiteMedia'").SingleAsync());
+            Assert.Equal(1, await migrated.Database.SqlQueryRaw<int>("SELECT COUNT(*) AS Value FROM sqlite_master WHERE type = 'table' AND name = 'SiteSettings'").SingleAsync());
+            Assert.Equal(2, (await migrated.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(ConnectionState.Closed, migrated.Database.GetDbConnection().State);
+            Assert.True(await migrated.Database.CanConnectAsync());
+            Assert.Equal(ConnectionState.Closed, migrated.Database.GetDbConnection().State);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
     [Fact]
     public async Task CoordinateColumnInitializationOpensClosedFileConnectionAndPreservesExistingData()
     {
@@ -122,6 +225,14 @@ public sealed class FileBackedPersistenceTests
         }
 
         public AppDbContext CreateDbContext() => new(_options);
+    }
+
+    private sealed class TestHostEnvironment : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = "Production";
+        public string ApplicationName { get; set; } = "SportsClubHub.Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 
     private static async Task InvokeCoordinateColumnInitializationAsync(AppDbContext db)

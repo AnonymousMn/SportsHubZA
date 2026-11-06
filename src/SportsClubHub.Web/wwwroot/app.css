@@ -502,3 +502,34 @@ table.data th { text-align: left; background: #edf3ef; font-weight: 600; }
     .task-row { grid-template-columns: auto minmax(0, 1fr); }
     .task-actions { grid-column: 1 / -1; justify-content: flex-start; max-width: none; }
 }
+
+/* ---------- Home hero with photo or video background (managed in Admin > Home page hero) ---------- */
+.home-hero { position: relative; }
+.hero-media { inset: 0; position: absolute; z-index: 0; }
+.hero-media-el { height: 100%; inset: 0; object-fit: cover; position: absolute; width: 100%; }
+/* The site's brand green sits over the media; its strength is set by the administrator. */
+.hero-overlay { background: var(--turf-dark); inset: 0; opacity: calc(var(--hero-overlay, 65) / 100); position: absolute; }
+.hero-overlay::after { background: linear-gradient(90deg, rgba(10,28,21,.55), rgba(10,28,21,0) 70%); content: ""; inset: 0; position: absolute; }
+.home-hero.has-media .home-hero-grid { grid-template-columns: minmax(0, 1fr); min-height: 620px; position: relative; z-index: 1; }
+.home-hero.has-media .hero-art { display: none; }
+.home-hero.has-media .hero-copy h1 { max-width: 12ch; text-shadow: 0 2px 18px rgba(0,0,0,.25); }
+.home-hero.has-media .hero-intro { max-width: 52ch; }
+.hero-video-toggle { background: rgba(10,28,21,.55); border: 1px solid rgba(255,255,255,.5); border-radius: 999px; bottom: 1rem; color: #fff; font-size: .8rem; font-weight: 600; padding: .35rem .9rem; position: absolute; right: 1rem; z-index: 3; }
+.hero-video-toggle:hover { background: rgba(10,28,21,.8); }
+@media (prefers-reduced-motion: reduce) {
+    .hero-media video, .hero-video-toggle { display: none; }
+}
+@media (max-width: 991.98px) {
+    .home-hero.has-media .home-hero-grid { display: block; min-height: 480px; }
+    .home-hero.has-media .hero-copy { padding: 4rem 0; }
+}
+
+/* ---------- Admin: hero editor ---------- */
+.hero-preview { aspect-ratio: 16 / 9; background: var(--turf-dark); border-radius: .5rem; color: #fff; overflow: hidden; position: relative; }
+.hero-preview-copy { bottom: 8%; left: 6%; position: absolute; z-index: 2; }
+.hero-preview-copy strong { display: block; font-size: clamp(1.2rem, 3vw, 2rem); line-height: 1; max-width: 12ch; }
+.hero-preview-copy span { color: #d9e9de; font-size: .8rem; }
+.media-choice { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+.media-choice label { border: 1px solid var(--line); border-radius: .35rem; cursor: pointer; display: block; font-weight: 600; padding: .6rem .8rem; }
+.media-choice input:checked + span { color: var(--turf-dark); }
+.media-choice label:has(input:checked) { background: var(--turf-soft); border-color: var(--turf); }

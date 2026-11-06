@@ -1,0 +1,194 @@
+@page "/admin/site"
+@attribute [Authorize(Roles = AppRoles.Administrator)]
+@rendermode InteractiveNoPrerender
+@inject SiteSettingsService SiteSettingsService
+
+<PageTitle>Home page hero | Sports Club Hub admin</PageTitle>
+
+<div class="container">
+    <PageHeader Title="Home page hero" Subtitle="Put a real photo or video behind the home page headline. The site's green stays on top as an overlay." />
+
+    @if (message is not null)
+    {
+        <div class="alert alert-success" role="status">@message <a href="/" target="_blank" rel="noopener">View the home page</a></div>
+    }
+    @if (errorMessage is not null)
+    {
+        <div class="alert alert-danger" role="alert">@errorMessage</div>
+    }
+
+    @if (!loaded)
+    {
+        <p class="muted" role="status">Loading...</p>
+    }
+    else
+    {
+        <div class="row g-4">
+            <div class="col-lg-7">
+                <h2 class="h5">Preview</h2>
+                <div class="hero-preview">
+                    @if (PreviewHasMedia)
+                    {
+                        <div class="hero-media" aria-hidden="true">
+                            @if (!string.IsNullOrWhiteSpace(imageUrl))
+                            {
+                                <img class="hero-media-el" src="@imageUrl" alt="" style="object-position:@HeroSettingsRules.FocusCss(focus)" onerror="this.style.display='none'" />
+                            }
+                            @if (kind == HeroMediaKind.Video && !string.IsNullOrWhiteSpace(videoUrl))
+                            {
+                                <video class="hero-media-el" src="@videoUrl" autoplay muted loop playsinline preload="metadata"
+                                       style="object-position:@HeroSettingsRules.FocusCss(focus)" onerror="this.style.display='none'"></video>
+                            }
+                            <div class="hero-overlay" style="--hero-overlay:@overlay"></div>
+                        </div>
+                    }
+                    <div class="hero-preview-copy">
+                        <strong>Find your sport. Find your people.</strong>
+                        <span>@(PreviewHasMedia ? "Preview of the home page hero" : "No background chosen: the plain green hero is shown")</span>
+                    </div>
+                </div>
+                <p class="muted small mt-2">The preview updates as you change things. Nothing is public until you press Save.</p>
+            </div>
+
+            <div class="col-lg-5">
+                <div class="panel">
+                    <fieldset class="mb-3">
+                        <legend class="form-label">Background</legend>
+                        <div class="media-choice">
+                            <label><input type="radio" name="hero-kind" class="form-check-input me-2" checked="@(kind == HeroMediaKind.None)" @onchange="() => kind = HeroMediaKind.None" /><span>None</span></label>
+                            <label><input type="radio" name="hero-kind" class="form-check-input me-2" checked="@(kind == HeroMediaKind.Image)" @onchange="() => kind = HeroMediaKind.Image" /><span>Image</span></label>
+                            <label><input type="radio" name="hero-kind" class="form-check-input me-2" checked="@(kind == HeroMediaKind.Video)" @onchange="() => kind = HeroMediaKind.Video" /><span>Video</span></label>
+                        </div>
+                    </fieldset>
+
+                    @if (kind != HeroMediaKind.None)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label" for="hero-upload">@(kind == HeroMediaKind.Video ? "Poster image (shown while the video loads, and for visitors who prefer less motion)" : "Upload an image")</label>
+                            <InputFile id="hero-upload" class="form-control" accept="image/jpeg,image/png,image/webp" OnChange="OnFileAsync" />
+                            <div class="form-text">JPEG, PNG or WebP up to 4 MB. About 1920 pixels wide is plenty; smaller files load faster.</div>
+                            @if (uploading) { <p class="muted small mb-0" role="status">Uploading...</p> }
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="hero-image-url">Or paste an image address</label>
+                            <input id="hero-image-url" class="form-control" type="url" placeholder="https://" @bind="imageUrl" @bind:event="oninput" />
+                        </div>
+                    }
+
+                    @if (kind == HeroMediaKind.Video)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label" for="hero-video-url">Video address</label>
+                            <input id="hero-video-url" class="form-control" type="url" placeholder="https://example.com/hero.mp4" @bind="videoUrl" @bind:event="oninput" />
+                            <div class="form-text">
+                                A direct link to an .mp4 or .webm file, ideally under 10 MB, muted and 10 to 20 seconds long.
+                                Videos are not uploaded here; host the file on a CDN or storage service. YouTube and Vimeo page links will not work.
+                            </div>
+                        </div>
+                    }
+
+                    @if (kind != HeroMediaKind.None)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label" for="hero-overlay">Green overlay strength: <strong>@overlay%</strong></label>
+                            <input id="hero-overlay" class="form-range" type="range" min="@HeroSettingsRules.MinOverlay" max="@HeroSettingsRules.MaxOverlay" step="5" @bind="overlay" @bind:event="oninput" />
+                            <div class="form-text">Higher keeps the headline easy to read; lower shows more of the picture.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="hero-focus">Keep this part of the picture in view</label>
+                            <select id="hero-focus" class="form-select" @bind="focus">
+                                <option value="@HeroFocus.Top">Top</option>
+                                <option value="@HeroFocus.Center">Middle</option>
+                                <option value="@HeroFocus.Bottom">Bottom</option>
+                            </select>
+                        </div>
+                        <p class="notice small">Use photos you have the right to use: your own, or from sites that allow reuse such as Unsplash, Pexels or Pixabay. Prefer real South African community sport, and avoid identifiable children.</p>
+                    }
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-primary" disabled="@(uploading || saving)" @onclick="SaveAsync">Save</button>
+                        <button type="button" class="btn btn-outline-secondary" disabled="@(uploading || saving)" @onclick="ResetAsync">Remove background</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool loaded;
+    private bool uploading;
+    private bool saving;
+    private HeroMediaKind kind;
+    private string? imageUrl;
+    private string? videoUrl;
+    private int overlay = HeroSettingsRules.DefaultOverlay;
+    private HeroFocus focus;
+    private string? message;
+    private string? errorMessage;
+
+    private bool PreviewHasMedia =>
+        (kind == HeroMediaKind.Image && !string.IsNullOrWhiteSpace(imageUrl)) ||
+        (kind == HeroMediaKind.Video && !string.IsNullOrWhiteSpace(videoUrl));
+
+    protected override async Task OnInitializedAsync()
+    {
+        Apply(await SiteSettingsService.GetHeroAsync());
+        loaded = true;
+    }
+
+    private void Apply(HeroSettings settings)
+    {
+        kind = settings.Kind;
+        imageUrl = settings.ImageUrl;
+        videoUrl = settings.VideoUrl;
+        overlay = settings.OverlayOpacity;
+        focus = settings.Focus;
+    }
+
+    private async Task OnFileAsync(InputFileChangeEventArgs e)
+    {
+        message = null;
+        errorMessage = null;
+        uploading = true;
+        try
+        {
+            // One byte more than the limit, so an oversized file is reported by the service with a clear message.
+            await using var stream = e.File.OpenReadStream(HeroSettingsRules.MaxUploadBytes + 1);
+            var result = await SiteSettingsService.UploadHeroImageAsync(stream);
+            if (result.Succeeded)
+            {
+                imageUrl = result.Url;
+                if (kind == HeroMediaKind.None) { kind = HeroMediaKind.Image; }
+            }
+            else
+            {
+                errorMessage = result.Error;
+            }
+        }
+        catch (IOException)
+        {
+            errorMessage = "That file is too large. Choose an image under 4 MB.";
+        }
+        finally
+        {
+            uploading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        saving = true;
+        var result = await SiteSettingsService.SaveHeroAsync(new HeroSettings(kind, imageUrl, videoUrl, overlay, focus));
+        message = result.Succeeded ? "Saved." : null;
+        errorMessage = result.Error;
+        saving = false;
+    }
+
+    private async Task ResetAsync()
+    {
+        kind = HeroMediaKind.None;
+        await SaveAsync();
+        if (errorMessage is null) { message = "Background removed. The plain green hero is showing."; }
+    }
+}

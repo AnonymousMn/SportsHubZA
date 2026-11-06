@@ -2,12 +2,35 @@
 @inject InsightsService InsightsService
 @inject AnnouncementService AnnouncementService
 @inject CompetitionService CompetitionService
+@inject SiteSettingsService SiteSettingsService
 
 <PageTitle>Sports Club Hub | Find a sport, club or venue near you</PageTitle>
 <SeoHead Title="Find local sports, clubs and places to play | Sports Club Hub"
          Description="Discover sports, verified clubs, venues and competitions across South Africa. Find a way to play locally with Sports Club Hub." />
 
-<section class="home-hero">
+<section class="home-hero @(hero.HasMedia ? "has-media" : "")">
+    @if (hero.HasMedia)
+    {
+        <div class="hero-media" aria-hidden="true">
+            @if (!string.IsNullOrEmpty(hero.ImageUrl))
+            {
+                <img class="hero-media-el" src="@hero.ImageUrl" alt="" fetchpriority="high" decoding="async"
+                     style="object-position:@HeroSettingsRules.FocusCss(hero.Focus)" onerror="this.style.display='none'" />
+            }
+            @if (hero.Kind == HeroMediaKind.Video && !string.IsNullOrEmpty(hero.VideoUrl))
+            {
+                <video class="hero-media-el" autoplay muted loop playsinline preload="metadata"
+                       style="object-position:@HeroSettingsRules.FocusCss(hero.Focus)" onerror="this.style.display='none'">
+                    <source src="@hero.VideoUrl" />
+                </video>
+            }
+            <div class="hero-overlay" style="--hero-overlay:@hero.OverlayOpacity"></div>
+        </div>
+        @if (hero.Kind == HeroMediaKind.Video)
+        {
+            <button type="button" class="hero-video-toggle" data-hero-video-toggle>Pause background video</button>
+        }
+    }
     <div class="container home-hero-grid">
         <div class="hero-copy">
             <p class="eyebrow eyebrow-light">South Africa's community sports directory</p>
@@ -124,9 +147,11 @@
     private DirectoryCounts? counts;
     private List<Announcement>? announcements;
     private List<Competition>? competitions;
+    private HeroSettings hero = HeroSettings.Default;
 
     protected override async Task OnInitializedAsync()
     {
+        hero = await SiteSettingsService.GetHeroAsync();
         counts = await InsightsService.GetDirectoryCountsAsync();
         announcements = await AnnouncementService.GetPublishedAsync();
         competitions = await CompetitionService.GetUpcomingAsync();

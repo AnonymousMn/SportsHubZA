@@ -39,9 +39,9 @@ pages enforce role authorization; account management is administrator-only.
 ## Persistence reality
 
 The provider is SQLite, not MongoDB. The default database is a file under the application
-content root. `DatabaseInitializer` currently uses `EnsureCreatedAsync` plus targeted SQLite
-compatibility SQL. This avoids destructive startup behavior but is not a substitute for
-versioned EF migrations.
+content root. `DatabaseInitializer` applies versioned EF migrations. Databases created by the
+older `EnsureCreated` flow receive additive compatibility steps and a baseline history entry
+before pending migrations run; existing data is retained.
 
 Render's default service filesystem is not a durable database location. A persistent disk
 or external database is required before relying on registrations across restarts. No MongoDB

@@ -27,6 +27,8 @@ public class AppDbContext : DbContext
     public DbSet<Announcement> Announcements => Set<Announcement>();
     public DbSet<Competition> Competitions => Set<Competition>();
     public DbSet<AdminTask> AdminTasks => Set<AdminTask>();
+    public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
+    public DbSet<SiteMedia> SiteMedia => Set<SiteMedia>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -103,5 +105,9 @@ public class AppDbContext : DbContext
             .HasOne(t => t.CreatedBy).WithMany()
             .HasForeignKey(t => t.CreatedByAdminUserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<AdminTask>().HasIndex(t => new { t.Status, t.AssignedToAdminUserId });
+
+        modelBuilder.Entity<SiteSettings>().Property(s => s.SiteSettingsId).ValueGeneratedNever();
+        modelBuilder.Entity<SiteSettings>().Property(s => s.HeroMediaKind).HasConversion<string>();
+        modelBuilder.Entity<SiteSettings>().Property(s => s.HeroFocus).HasConversion<string>();
     }
 }
