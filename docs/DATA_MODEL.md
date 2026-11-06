@@ -14,7 +14,9 @@
 | `SportInterest` | Participant/sport join | Composite key prevents duplicate interest |
 | `AdminUser` | Staff identity | Unique e-mail; password hash only; role and active flag |
 | `Announcement` | Public staff-managed update | Draft/publish/pin/priority/expiry state |
-| `AdminTask` | Internal to-do item for administrators | Title, notes, status (Open/InProgress/Done), priority, due date, assignee and creator (`AdminUser`), timestamps. Holds no participant personal data. The table is created at startup with `CREATE TABLE IF NOT EXISTS` like the other late additions; move it into a migration when migrations are introduced. |
+| `SiteSettings` | Website appearance settings (one row) | Home hero media kind (none/image/video), image and video addresses, overlay strength (20 to 95 percent) and focus. Created by the `AddHeroMedia` migration. |
+| `SiteMedia` | Images uploaded in the admin area | Content type (decided from the file bytes: JPEG, PNG or WebP only), bytes, created time. Served from `/media/{id}`; never edited, only replaced. |
+| `AdminTask` | Internal to-do item for administrators | Title, notes, status (Open/InProgress/Done), priority, due date, assignee and creator (`AdminUser`), timestamps. Holds no participant personal data. Included in the legacy schema baseline. |
 | `Competition` | Optional scheduled event | Linked to active sport; optional club and venue |
 
 ## Relationships and deletion
@@ -40,8 +42,7 @@
 - Current storage is EF Core SQLite.
 - The default file is `App_Data/sportsclubhub.db`.
 - Startup must not drop or wipe data.
-- `EnsureCreated` does not evolve an existing schema; current compatibility SQL is a
-  transitional measure.
+- Legacy databases are baselined after additive compatibility updates; migrations then evolve the schema.
 - Future schema changes require reviewed EF migrations and backups.
 - MongoDB is not part of this model or provider implementation.
 - Render durability is not guaranteed by this repository; persistent storage must be

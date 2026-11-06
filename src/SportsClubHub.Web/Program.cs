@@ -37,6 +37,7 @@ builder.Services.AddScoped<ParticipantInterestService>();
 builder.Services.AddScoped<InsightsService>();
 builder.Services.AddScoped<AdminDashboardService>();
 builder.Services.AddScoped<AdminTaskService>();
+builder.Services.AddScoped<SiteSettingsService>();
 builder.Services.AddScoped<AnnouncementService>();
 builder.Services.AddScoped<CompetitionService>();
 builder.Services.AddScoped<AdminAccountService>();
@@ -95,6 +96,16 @@ app.UseStatusCodePagesWithReExecute("/not-found");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+
+// Images uploaded in the admin area. Ids are never reused for different content, so browsers may cache them for a year.
+app.MapGet("/media/{id:int}", async (int id, SiteSettingsService settings, HttpContext http) =>
+{
+    var media = await settings.GetMediaAsync(id);
+    if (media is null) { return Results.NotFound(); }
+
+    http.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+    return Results.File(media.Value.Data, media.Value.ContentType);
+});
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 

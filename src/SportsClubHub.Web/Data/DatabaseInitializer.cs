@@ -5,8 +5,8 @@ namespace SportsClubHub.Web.Data;
 
 /// <summary>
 /// Prepares the database when the application starts. It never deletes anything:
-/// EnsureCreated only builds the tables when the database file does not exist yet, and the
-/// seed steps only run when the relevant tables are empty.
+/// Migrations build and evolve the schema. Legacy databases are baselined once after their
+/// additive compatibility steps run; no existing rows are dropped.
 /// </summary>
 public class DatabaseInitializer
 {
@@ -31,7 +31,24 @@ public class DatabaseInitializer
     {
         await using var db = await _factory.CreateDbContextAsync();
 
-        await db.Database.EnsureCreatedAsync();
+        var hasLegacySchema = await TableExistsAsync(db, "Sports");
+        var hasMigrationHistory = (await db.Database.GetAppliedMigrationsAsync()).Any();
+
+        if (hasLegacySchema && !hasMigrationHistory)
+        {
+            // Bring databases created by EnsureCreated up to the legacy model before recording
+            // the baseline. These operations only add missing tables, columns and indexes.
+            await EnsureSportImageColumnAsync(db);
+            await EnsureAdminAccountColumnsAsync(db);
+            await EnsureAnnouncementsTableAsync(db);
+            await EnsureCompetitionsTableAsync(db);
+            await EnsureAdminTasksTableAsync(db);
+            await EnsureCoordinateColumnsAsync(db);
+            await EnsureDuplicateProtectionIndexesAsync(db);
+            await RecordLegacyBaselineAsync(db);
+        }
+
+        await db.Database.MigrateAsync();
         await EnsureSportImageColumnAsync(db);
         await EnsureAdminAccountColumnsAsync(db);
         await EnsureAnnouncementsTableAsync(db);
@@ -55,6 +72,71 @@ public class DatabaseInitializer
         }
 
         await _adminAccounts.EnsureInitialAdminAsync();
+    }
+
+    private static async Task<bool> TableExistsAsync(AppDbContext db, string tableName)
+    {
+        var connection = db.Database.GetDbConnection();
+        var openedHere = connection.State != System.Data.ConnectionState.Open;
+        if (openedHere)
+        {
+            await db.Database.OpenConnectionAsync();
+        }
+
+        try
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = $name);";
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = "$name";
+            parameter.Value = tableName;
+            command.Parameters.Add(parameter);
+            return Convert.ToInt32(await command.ExecuteScalarAsync()) == 1;
+        }
+        finally
+        {
+            if (openedHere)
+            {
+                await db.Database.CloseConnectionAsync();
+            }
+        }
+    }
+
+    private static async Task RecordLegacyBaselineAsync(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var openedHere = connection.State != System.Data.ConnectionState.Open;
+        if (openedHere)
+        {
+            await db.Database.OpenConnectionAsync();
+        }
+
+        try
+        {
+            await using var createHistory = connection.CreateCommand();
+            createHistory.CommandText = """
+                CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+                    "MigrationId" TEXT NOT NULL CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY,
+                    "ProductVersion" TEXT NOT NULL
+                );
+                """;
+            await createHistory.ExecuteNonQueryAsync();
+
+            await using var record = connection.CreateCommand();
+            record.CommandText = "INSERT OR IGNORE INTO \"__EFMigrationsHistory\" (\"MigrationId\", \"ProductVersion\") VALUES ($id, '8.0.11');";
+            var parameter = record.CreateParameter();
+            parameter.ParameterName = "$id";
+            parameter.Value = "20261106093502_LegacySchemaBaseline";
+            record.Parameters.Add(parameter);
+            await record.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            if (openedHere)
+            {
+                await db.Database.CloseConnectionAsync();
+            }
+        }
     }
 
     private static async Task EnsureCompetitionsTableAsync(AppDbContext db)

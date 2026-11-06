@@ -65,6 +65,30 @@ window.sportsClubHub = {
     });
 })();
 
+// Home page hero video: respect reduced-motion and data-saver, and let visitors pause it (moving content needs a pause control).
+(function () {
+    function heroVideo() { return document.querySelector('.hero-media video'); }
+    function init() {
+        var video = heroVideo();
+        if (!video) { return; }
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var saveData = navigator.connection && navigator.connection.saveData;
+        if (reduce || saveData) { video.pause(); }
+    }
+    document.addEventListener('click', function (event) {
+        var button = event.target.closest && event.target.closest('[data-hero-video-toggle]');
+        var video = heroVideo();
+        if (!button || !video) { return; }
+        if (video.paused) { video.play(); button.textContent = 'Pause background video'; }
+        else { video.pause(); button.textContent = 'Play background video'; }
+    });
+    document.addEventListener('DOMContentLoaded', init);
+    window.addEventListener('load', function () {
+        init();
+        if (window.Blazor && window.Blazor.addEventListener) { window.Blazor.addEventListener('enhancedload', init); }
+    });
+})();
+
 // Give visitors immediate feedback while an internal route loads. Enhanced navigation
 // replaces the route without a full document load, so clear the indicator after each update.
 (function () {
